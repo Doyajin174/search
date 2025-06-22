@@ -1,8 +1,12 @@
 import os
 import requests
 import logging
+import time
+import hashlib
 from flask import Flask, render_template, request, jsonify, session
-from datetime import datetime
+from flask_sqlalchemy import SQLAlchemy
+from datetime import datetime, timedelta
+from models import db, User, Conversation, Message, UserSession
 
 # 로깅 설정
 logging.basicConfig(level=logging.DEBUG)
@@ -10,6 +14,17 @@ logging.basicConfig(level=logging.DEBUG)
 # Flask 앱 초기화
 app = Flask(__name__)
 app.secret_key = os.environ.get("SESSION_SECRET", "default_secret_key_for_development")
+
+# 데이터베이스 설정
+app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL')
+app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
+    "pool_recycle": 300,
+    "pool_pre_ping": True,
+}
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+
+# 데이터베이스 초기화
+db.init_app(app)
 
 # Perplexity API 설정
 PERPLEXITY_API_KEY = os.environ.get("PERPLEXITY_API_KEY", "your_api_key_here")
@@ -113,12 +128,57 @@ def get_response_config(question_type, search_scope):
     
     return config
 
+def get_or_create_user():
+    """세션에서 사용자 ID를 가져오거나 새 사용자 생성"""
+    user_id = session.get('user_id')
+    
+    if user_id:
+        user = User.query.get(user_id)
+        if user:
+            # 마지막 활동 시간 업데이트
+            user.last_active = datetime.utcnow()
+            db.session.commit()
+            return user
+    
+    # 새 사용자 생성
+    user = User()
+    db.session.add(user)
+    db.session.commit()
+    
+    # 세션에 사용자 ID 저장
+    session['user_id'] = user.id
+    session.permanent = True
+    
+    return user
+
+def get_or_create_conversation(user_id):
+    """현재 활성 대화를 가져오거나 새 대화 생성"""
+    conversation_id = session.get('conversation_id')
+    
+    if conversation_id:
+        conversation = Conversation.query.filter_by(
+            id=conversation_id, 
+            user_id=user_id, 
+            is_active=True
+        ).first()
+        if conversation:
+            return conversation
+    
+    # 새 대화 생성
+    conversation = Conversation(user_id=user_id)
+    db.session.add(conversation)
+    db.session.commit()
+    
+    # 세션에 대화 ID 저장
+    session['conversation_id'] = conversation.id
+    
+    return conversation
+
 @app.route('/')
 def index():
     """메인 페이지 렌더링"""
-    # 세션에 대화 기록이 없으면 초기화
-    if 'conversation_history' not in session:
-        session['conversation_history'] = []
+    # 사용자 생성 또는 가져오기
+    user = get_or_create_user()
     return render_template('index.html')
 
 @app.route('/api/chat', methods=['POST'])
@@ -140,48 +200,56 @@ def chat():
         # 질문 유형에 따른 응답 설정 가져오기
         response_config = get_response_config(question_type, search_scope)
         
-        # 세션에서 대화 기록 가져오기
-        if 'conversation_history' not in session:
-            session['conversation_history'] = []
+        # 사용자 및 대화 가져오기/생성
+        user = get_or_create_user()
+        conversation = get_or_create_conversation(user.id)
         
-        conversation_history = session['conversation_history']
-        timestamp = datetime.now().isoformat()
+        # 처리 시작 시간 기록
+        start_time = time.time()
         
-        # 사용자 메시지를 대화 기록에 추가
-        conversation_history.append({
-            'type': 'user',
-            'content': user_message,
-            'timestamp': timestamp,
-            'user_name': user_name,
-            'question_type': question_type  # 질문 유형도 저장
-        })
+        # 사용자 메시지를 데이터베이스에 저장
+        user_message_obj = Message(
+            conversation_id=conversation.id,
+            user_id=user.id,
+            content=user_message,
+            message_type='user',
+            question_type=question_type,
+            search_scope=search_scope
+        )
+        db.session.add(user_message_obj)
+        db.session.commit()
         
         # 인사말의 경우 검색 없이 직접 응답
         if not response_config.get("use_search", True):
             ai_content = response_config["response"]
             citations = []
+            processing_time = time.time() - start_time
             
-            # AI 응답을 대화 기록에 추가
-            conversation_history.append({
-                'type': 'assistant',
-                'content': ai_content,
-                'citations': citations,
-                'timestamp': timestamp,
-                'question_type': question_type
-            })
+            # AI 응답을 데이터베이스에 저장
+            ai_message_obj = Message(
+                conversation_id=conversation.id,
+                user_id=user.id,
+                content=ai_content,
+                message_type='assistant',
+                question_type=question_type,
+                citations=citations,
+                search_scope=search_scope,
+                processing_time=processing_time
+            )
+            db.session.add(ai_message_obj)
             
-            # 세션 업데이트 (최근 20개 메시지만 유지)
-            if len(conversation_history) > 20:
-                conversation_history = conversation_history[-20:]
+            # 대화 업데이트 시간 갱신
+            conversation.updated_at = datetime.utcnow()
+            if not conversation.title:
+                conversation.title = user_message[:50] + ('...' if len(user_message) > 50 else '')
             
-            session['conversation_history'] = conversation_history
-            session.modified = True
+            db.session.commit()
             
             return jsonify({
                 'success': True,
                 'response': ai_content,
                 'citations': citations,
-                'timestamp': timestamp,
+                'timestamp': user_message_obj.created_at.isoformat(),
                 'question_type': question_type
             })
         
@@ -196,13 +264,21 @@ def chat():
             "content": system_content
         })
         
-        # 이전 대화 기록 추가 (최근 대화만, 인사말 제외)
-        recent_history = [msg for msg in conversation_history[-10:] if msg.get('question_type') != 'greeting']
-        for msg in recent_history:
-            if msg['type'] in ['user', 'assistant']:
+        # 이전 대화 기록 추가 (최근 10개 메시지, 인사말 제외)
+        recent_messages = Message.query.filter_by(
+            conversation_id=conversation.id
+        ).filter(
+            Message.question_type != 'greeting'
+        ).order_by(Message.created_at.desc()).limit(10).all()
+        
+        # 시간순 정렬로 되돌리기
+        recent_messages.reverse()
+        
+        for msg in recent_messages:
+            if msg.id != user_message_obj.id:  # 현재 메시지는 제외
                 messages.append({
-                    "role": "user" if msg['type'] == 'user' else "assistant",
-                    "content": msg['content']
+                    "role": "user" if msg.message_type == 'user' else "assistant",
+                    "content": msg.content
                 })
         
         # 현재 사용자 메시지 추가
@@ -247,27 +323,34 @@ def chat():
         if len(citations) > max_sources:
             citations = citations[:max_sources]
         
-        # AI 응답을 대화 기록에 추가
-        conversation_history.append({
-            'type': 'assistant',
-            'content': ai_content,
-            'citations': citations,
-            'timestamp': timestamp,
-            'question_type': question_type
-        })
+        # 처리 시간 계산
+        processing_time = time.time() - start_time
         
-        # 세션 업데이트 (최근 20개 메시지만 유지)
-        if len(conversation_history) > 20:
-            conversation_history = conversation_history[-20:]
+        # AI 응답을 데이터베이스에 저장
+        ai_message_obj = Message(
+            conversation_id=conversation.id,
+            user_id=user.id,
+            content=ai_content,
+            message_type='assistant',
+            question_type=question_type,
+            citations=citations,
+            search_scope=search_scope,
+            processing_time=processing_time
+        )
+        db.session.add(ai_message_obj)
         
-        session['conversation_history'] = conversation_history
-        session.modified = True
+        # 대화 업데이트 시간 갱신 및 제목 설정
+        conversation.updated_at = datetime.utcnow()
+        if not conversation.title:
+            conversation.title = user_message[:50] + ('...' if len(user_message) > 50 else '')
+        
+        db.session.commit()
         
         return jsonify({
             'success': True,
             'response': ai_content,
             'citations': citations,
-            'timestamp': timestamp,
+            'timestamp': user_message_obj.created_at.isoformat(),
             'question_type': question_type
         })
         
@@ -283,30 +366,84 @@ def chat():
 
 @app.route('/api/conversation', methods=['GET'])
 def get_conversation():
-    """현재 세션의 대화 기록 반환"""
-    conversation_history = session.get('conversation_history', [])
-    return jsonify({'conversation': conversation_history})
+    """현재 대화의 메시지 기록 반환"""
+    try:
+        user = get_or_create_user()
+        conversation_id = session.get('conversation_id')
+        
+        if not conversation_id:
+            return jsonify({'conversation': []})
+        
+        # 현재 대화의 메시지들 가져오기
+        messages = Message.query.filter_by(
+            conversation_id=conversation_id
+        ).order_by(Message.created_at).all()
+        
+        # 세션 형태로 변환
+        conversation_data = []
+        for msg in messages:
+            message_data = {
+                'type': msg.message_type,
+                'content': msg.content,
+                'timestamp': msg.created_at.isoformat(),
+                'question_type': msg.question_type
+            }
+            
+            if msg.message_type == 'assistant' and msg.citations:
+                message_data['citations'] = msg.citations
+                
+            if msg.message_type == 'user':
+                # 사용자 이름은 현재 사용자 설정에서 가져오기
+                message_data['user_name'] = user.name
+                
+            conversation_data.append(message_data)
+        
+        return jsonify({'conversation': conversation_data})
+        
+    except Exception as e:
+        logging.error(f"대화 기록 조회 오류: {str(e)}")
+        return jsonify({'conversation': []})
 
 @app.route('/api/clear', methods=['POST'])
 def clear_conversation():
-    """대화 기록 초기화"""
-    session['conversation_history'] = []
-    session.modified = True
-    return jsonify({'success': True, 'message': '대화 기록이 초기화되었습니다.'})
+    """현재 대화 종료 및 새 대화 시작"""
+    try:
+        user = get_or_create_user()
+        conversation_id = session.get('conversation_id')
+        
+        if conversation_id:
+            # 현재 대화를 비활성화
+            conversation = Conversation.query.get(conversation_id)
+            if conversation:
+                conversation.is_active = False
+                db.session.commit()
+        
+        # 세션에서 대화 ID 제거 (새 대화가 자동 생성됨)
+        session.pop('conversation_id', None)
+        
+        return jsonify({'success': True, 'message': '대화 기록이 초기화되었습니다.'})
+        
+    except Exception as e:
+        logging.error(f"대화 기록 초기화 오류: {str(e)}")
+        return jsonify({'error': '대화 기록 초기화 중 오류가 발생했습니다.'}), 500
 
 @app.route('/api/settings', methods=['POST'])
 def save_settings():
-    """사용자 설정 저장 (세션에 저장)"""
+    """사용자 설정 저장"""
     try:
         data = request.get_json()
         user_name = data.get('user_name', '사용자')
         search_scope = data.get('search_scope', 'general')
+        theme = data.get('theme', 'light')
         
-        session['user_settings'] = {
-            'user_name': user_name,
-            'search_scope': search_scope
-        }
-        session.modified = True
+        # 사용자 정보 업데이트
+        user = get_or_create_user()
+        user.name = user_name
+        user.search_scope = search_scope
+        user.theme = theme
+        user.updated_at = datetime.utcnow()
+        
+        db.session.commit()
         
         return jsonify({'success': True, 'message': '설정이 저장되었습니다.'})
     except Exception as e:
@@ -316,11 +453,143 @@ def save_settings():
 @app.route('/api/settings', methods=['GET'])
 def get_settings():
     """사용자 설정 조회"""
-    settings = session.get('user_settings', {
-        'user_name': '사용자',
-        'search_scope': 'general'
-    })
-    return jsonify(settings)
+    try:
+        user = get_or_create_user()
+        settings = {
+            'user_name': user.name,
+            'search_scope': user.search_scope,
+            'theme': user.theme
+        }
+        return jsonify(settings)
+    except Exception as e:
+        logging.error(f"설정 조회 오류: {str(e)}")
+        return jsonify({
+            'user_name': '사용자',
+            'search_scope': 'general',
+            'theme': 'light'
+        })
+
+@app.route('/api/conversations', methods=['GET'])
+def get_conversations():
+    """사용자의 모든 대화 목록 반환"""
+    try:
+        user = get_or_create_user()
+        
+        # 사용자의 모든 대화 가져오기 (최신순)
+        conversations = Conversation.query.filter_by(
+            user_id=user.id
+        ).order_by(Conversation.updated_at.desc()).limit(50).all()
+        
+        conversation_list = []
+        for conv in conversations:
+            # 각 대화의 첫 번째 메시지와 마지막 메시지 시간 가져오기
+            first_message = Message.query.filter_by(
+                conversation_id=conv.id
+            ).order_by(Message.created_at).first()
+            
+            conversation_data = {
+                'id': conv.id,
+                'title': conv.title or (first_message.content[:30] + '...' if first_message and len(first_message.content) > 30 else first_message.content if first_message else '새 대화'),
+                'created_at': conv.created_at.isoformat(),
+                'updated_at': conv.updated_at.isoformat(),
+                'is_active': conv.is_active,
+                'message_count': len(conv.messages)
+            }
+            conversation_list.append(conversation_data)
+        
+        return jsonify({'conversations': conversation_list})
+        
+    except Exception as e:
+        logging.error(f"대화 목록 조회 오류: {str(e)}")
+        return jsonify({'conversations': []})
+
+@app.route('/api/conversation/<conversation_id>', methods=['GET'])
+def get_specific_conversation(conversation_id):
+    """특정 대화의 메시지 기록 반환"""
+    try:
+        user = get_or_create_user()
+        
+        # 대화 소유권 확인
+        conversation = Conversation.query.filter_by(
+            id=conversation_id,
+            user_id=user.id
+        ).first()
+        
+        if not conversation:
+            return jsonify({'error': '대화를 찾을 수 없습니다.'}), 404
+        
+        # 대화의 메시지들 가져오기
+        messages = Message.query.filter_by(
+            conversation_id=conversation_id
+        ).order_by(Message.created_at).all()
+        
+        # 세션에 현재 대화 ID 설정
+        session['conversation_id'] = conversation_id
+        
+        # 메시지 데이터 변환
+        conversation_data = []
+        for msg in messages:
+            message_data = {
+                'type': msg.message_type,
+                'content': msg.content,
+                'timestamp': msg.created_at.isoformat(),
+                'question_type': msg.question_type
+            }
+            
+            if msg.message_type == 'assistant' and msg.citations:
+                message_data['citations'] = msg.citations
+                
+            if msg.message_type == 'user':
+                message_data['user_name'] = user.name
+                
+            conversation_data.append(message_data)
+        
+        return jsonify({
+            'conversation': conversation_data,
+            'conversation_info': {
+                'id': conversation.id,
+                'title': conversation.title,
+                'created_at': conversation.created_at.isoformat(),
+                'updated_at': conversation.updated_at.isoformat()
+            }
+        })
+        
+    except Exception as e:
+        logging.error(f"특정 대화 조회 오류: {str(e)}")
+        return jsonify({'error': '대화 조회 중 오류가 발생했습니다.'}), 500
+
+@app.route('/api/conversation/<conversation_id>', methods=['DELETE'])
+def delete_conversation(conversation_id):
+    """특정 대화 삭제"""
+    try:
+        user = get_or_create_user()
+        
+        # 대화 소유권 확인
+        conversation = Conversation.query.filter_by(
+            id=conversation_id,
+            user_id=user.id
+        ).first()
+        
+        if not conversation:
+            return jsonify({'error': '대화를 찾을 수 없습니다.'}), 404
+        
+        # 대화와 관련 메시지 모두 삭제 (CASCADE로 자동 삭제됨)
+        db.session.delete(conversation)
+        db.session.commit()
+        
+        # 현재 세션의 대화 ID와 같다면 제거
+        if session.get('conversation_id') == conversation_id:
+            session.pop('conversation_id', None)
+        
+        return jsonify({'success': True, 'message': '대화가 삭제되었습니다.'})
+        
+    except Exception as e:
+        logging.error(f"대화 삭제 오류: {str(e)}")
+        return jsonify({'error': '대화 삭제 중 오류가 발생했습니다.'}), 500
+
+# 데이터베이스 테이블 생성
+with app.app_context():
+    db.create_all()
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000, debug=True)

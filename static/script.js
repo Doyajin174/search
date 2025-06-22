@@ -53,6 +53,16 @@ class PPLXChatApp {
             this.clearConversation();
         });
         
+        // 새 대화 시작
+        document.getElementById('newChat').addEventListener('click', () => {
+            this.startNewConversation();
+        });
+        
+        // 대화 기록 보기 토글
+        document.getElementById('showConversations').addEventListener('click', () => {
+            this.toggleConversationList();
+        });
+        
         // 사이드바 토글 (모바일)
         const sidebarToggle = document.getElementById('sidebarToggle');
         const sidebar = document.getElementById('sidebar');
@@ -197,10 +207,12 @@ class PPLXChatApp {
         try {
             const userName = document.getElementById('userName').value.trim() || '사용자';
             const searchScope = document.getElementById('searchScope').value;
+            const theme = document.documentElement.getAttribute('data-theme') || 'light';
             
             this.userSettings = {
                 user_name: userName,
-                search_scope: searchScope
+                search_scope: searchScope,
+                theme: theme
             };
             
             // 로컬 스토리지에 저장
@@ -480,10 +492,10 @@ class PPLXChatApp {
     }
     
     /**
-     * 대화 기록 초기화
+     * 현재 대화 삭제
      */
     async clearConversation() {
-        if (!confirm('대화 기록을 모두 삭제하시겠습니까?')) {
+        if (!confirm('현재 대화를 삭제하시겠습니까?')) {
             return;
         }
         
@@ -501,14 +513,168 @@ class PPLXChatApp {
                 const existingMessages = chatMessages.querySelectorAll('.message-bubble:not(.welcome-message)');
                 existingMessages.forEach(msg => msg.remove());
                 
-                this.showToast('대화 기록이 초기화되었습니다.', 'success');
+                this.showToast('대화가 삭제되었습니다.', 'success');
+                
+                // 대화 목록 새로고침
+                if (document.getElementById('conversationList').style.display !== 'none') {
+                    this.loadConversationList();
+                }
             } else {
-                throw new Error('대화 기록 초기화 실패');
+                throw new Error('대화 삭제 실패');
             }
             
         } catch (error) {
-            console.error('대화 기록 초기화 실패:', error);
-            this.showToast('대화 기록 초기화에 실패했습니다.', 'error');
+            console.error('대화 삭제 실패:', error);
+            this.showToast('대화 삭제에 실패했습니다.', 'error');
+        }
+    }
+    
+    /**
+     * 새 대화 시작
+     */
+    async startNewConversation() {
+        try {
+            // 현재 대화 종료
+            await fetch('/api/clear', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            });
+            
+            // UI 초기화
+            const chatMessages = document.getElementById('chatMessages');
+            const existingMessages = chatMessages.querySelectorAll('.message-bubble:not(.welcome-message)');
+            existingMessages.forEach(msg => msg.remove());
+            
+            this.showToast('새 대화를 시작합니다.', 'success');
+            
+            // 메시지 입력창에 포커스
+            document.getElementById('messageInput').focus();
+            
+        } catch (error) {
+            console.error('새 대화 시작 실패:', error);
+            this.showToast('새 대화 시작에 실패했습니다.', 'error');
+        }
+    }
+    
+    /**
+     * 대화 목록 토글
+     */
+    async toggleConversationList() {
+        const conversationList = document.getElementById('conversationList');
+        const showButton = document.getElementById('showConversations');
+        
+        if (conversationList.style.display === 'none') {
+            await this.loadConversationList();
+            conversationList.style.display = 'block';
+            showButton.innerHTML = '<i class="fas fa-eye-slash me-1"></i>대화 기록 숨기기';
+        } else {
+            conversationList.style.display = 'none';
+            showButton.innerHTML = '<i class="fas fa-history me-1"></i>대화 기록 보기';
+        }
+    }
+    
+    /**
+     * 대화 목록 로드
+     */
+    async loadConversationList() {
+        try {
+            const response = await fetch('/api/conversations');
+            if (response.ok) {
+                const data = await response.json();
+                this.displayConversationList(data.conversations);
+            } else {
+                throw new Error('대화 목록 조회 실패');
+            }
+        } catch (error) {
+            console.error('대화 목록 로드 실패:', error);
+            this.showToast('대화 목록을 불러올 수 없습니다.', 'error');
+        }
+    }
+    
+    /**
+     * 대화 목록 표시
+     */
+    displayConversationList(conversations) {
+        const conversationItems = document.getElementById('conversationItems');
+        conversationItems.innerHTML = '';
+        
+        if (conversations.length === 0) {
+            conversationItems.innerHTML = '<p class="text-muted small">저장된 대화가 없습니다.</p>';
+            return;
+        }
+        
+        conversations.forEach(conv => {
+            const convElement = document.createElement('div');
+            convElement.className = 'conversation-item border rounded p-2 mb-2 cursor-pointer';
+            convElement.style.cursor = 'pointer';
+            
+            const updatedTime = new Date(conv.updated_at);
+            const timeStr = this.formatTime(updatedTime);
+            
+            convElement.innerHTML = `
+                <div class="d-flex justify-content-between align-items-start">
+                    <div class="flex-grow-1" onclick="chatApp.loadSpecificConversation('${conv.id}')">
+                        <small class="d-block text-truncate fw-semibold">${this.escapeHtml(conv.title)}</small>
+                        <small class="text-muted">${timeStr} • ${conv.message_count}개 메시지</small>
+                    </div>
+                    <button class="btn btn-sm btn-outline-danger ms-2" onclick="chatApp.deleteSpecificConversation('${conv.id}')" title="삭제">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </div>
+            `;
+            
+            conversationItems.appendChild(convElement);
+        });
+    }
+    
+    /**
+     * 특정 대화 로드
+     */
+    async loadSpecificConversation(conversationId) {
+        try {
+            const response = await fetch(`/api/conversation/${conversationId}`);
+            if (response.ok) {
+                const data = await response.json();
+                this.displayConversationHistory(data.conversation);
+                this.showToast('대화를 불러왔습니다.', 'success');
+                
+                // 대화 목록 숨기기
+                document.getElementById('conversationList').style.display = 'none';
+                document.getElementById('showConversations').innerHTML = '<i class="fas fa-history me-1"></i>대화 기록 보기';
+            } else {
+                throw new Error('대화 로드 실패');
+            }
+        } catch (error) {
+            console.error('특정 대화 로드 실패:', error);
+            this.showToast('대화를 불러올 수 없습니다.', 'error');
+        }
+    }
+    
+    /**
+     * 특정 대화 삭제
+     */
+    async deleteSpecificConversation(conversationId) {
+        if (!confirm('이 대화를 삭제하시겠습니까?')) {
+            return;
+        }
+        
+        try {
+            const response = await fetch(`/api/conversation/${conversationId}`, {
+                method: 'DELETE'
+            });
+            
+            if (response.ok) {
+                this.showToast('대화가 삭제되었습니다.', 'success');
+                // 대화 목록 새로고침
+                this.loadConversationList();
+            } else {
+                throw new Error('대화 삭제 실패');
+            }
+        } catch (error) {
+            console.error('대화 삭제 실패:', error);
+            this.showToast('대화 삭제에 실패했습니다.', 'error');
         }
     }
     
@@ -632,9 +798,10 @@ class PPLXChatApp {
     }
 }
 
-// 앱 초기화
+// 앱 초기화 및 전역 변수
+let chatApp;
 document.addEventListener('DOMContentLoaded', () => {
-    new PPLXChatApp();
+    chatApp = new PPLXChatApp();
 });
 
 // 윈도우 리사이즈 시 사이드바 상태 조정

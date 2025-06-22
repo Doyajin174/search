@@ -75,10 +75,18 @@ This is a Flask-based web application that provides an AI-powered search interfa
 - **Perplexity AI API**: Core AI functionality for search and chat
 - **Environment Configuration**: API keys and secrets management
 
-### Database Considerations
-- **Current**: Flask sessions (server-side storage)
-- **Future**: Repository is configured for PostgreSQL integration if needed
-- **Note**: Drizzle ORM may be added later for more robust data management
+### Database Architecture
+- **Database**: PostgreSQL with Flask-SQLAlchemy ORM
+- **Tables**: 
+  - `users` - User profiles and settings
+  - `conversations` - Chat sessions with metadata
+  - `messages` - Individual chat messages with question type classification
+  - `user_sessions` - Session management for user state
+- **Features**: 
+  - Persistent conversation history
+  - Question type classification storage
+  - User preference persistence
+  - Conversation management (create, read, delete)
 
 ## Deployment Strategy
 
@@ -102,7 +110,10 @@ This is a Flask-based web application that provides an AI-powered search interfa
 
 ```
 Changelog:
-- June 22, 2025. Initial setup
+- June 22, 2025. Initial setup with Flask backend and Perplexity AI integration
+- June 22, 2025. Added intelligent question classification system (greeting, realtime, learning, info_search, general)
+- June 22, 2025. Integrated PostgreSQL database for persistent storage of users, conversations, and messages
+- June 22, 2025. Added conversation history management with CRUD operations
 ```
 
 ## User Preferences

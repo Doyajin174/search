@@ -450,3 +450,55 @@ html, body {
     color: #d7bde2;
     border-color: #6c3483;
 }
+
+/* 대화 목록 스타일 */
+.conversation-list {
+    max-height: 300px;
+    overflow-y: auto;
+    margin-top: 1rem;
+    padding-top: 1rem;
+    border-top: 1px solid var(--border-color);
+}
+
+.conversation-item {
+    background-color: var(--bg-secondary);
+    border-color: var(--border-color) !important;
+    transition: all 0.2s ease;
+}
+
+.conversation-item:hover {
+    background-color: var(--bg-tertiary);
+    transform: translateY(-1px);
+    box-shadow: var(--shadow);
+}
+
+.conversation-item .btn-outline-danger {
+    border-color: var(--border-color);
+    color: var(--text-secondary);
+    background-color: transparent;
+}
+
+.conversation-item .btn-outline-danger:hover {
+    background-color: #dc3545;
+    border-color: #dc3545;
+    color: white;
+}
+
+/* 대화 목록 스크롤바 */
+.conversation-list::-webkit-scrollbar {
+    width: 0.4rem;
+}
+
+.conversation-list::-webkit-scrollbar-track {
+    background: var(--bg-secondary);
+    border-radius: 0.2rem;
+}
+
+.conversation-list::-webkit-scrollbar-thumb {
+    background: var(--text-muted);
+    border-radius: 0.2rem;
+}
+
+.conversation-list::-webkit-scrollbar-thumb:hover {
+    background: var(--text-secondary);
+}
