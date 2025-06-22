@@ -1,0 +1,394 @@
+/* 전역 변수 (라이트 테마) */
+:root {
+    --bg-primary: #ffffff;
+    --bg-secondary: #f8f9fa;
+    --bg-tertiary: #e9ecef;
+    --text-primary: #212529;
+    --text-secondary: #6c757d;
+    --text-muted: #adb5bd;
+    --border-color: #dee2e6;
+    --user-message-bg: #007bff;
+    --user-message-text: #ffffff;
+    --assistant-message-bg: #f8f9fa;
+    --assistant-message-text: #212529;
+    --sidebar-bg: #f8f9fa;
+    --chat-input-bg: #ffffff;
+    --shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+    --shadow-lg: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+}
+
+/* 다크 테마 */
+[data-theme="dark"] {
+    --bg-primary: #212529;
+    --bg-secondary: #343a40;
+    --bg-tertiary: #495057;
+    --text-primary: #f8f9fa;
+    --text-secondary: #adb5bd;
+    --text-muted: #6c757d;
+    --border-color: #495057;
+    --user-message-bg: #0d6efd;
+    --user-message-text: #ffffff;
+    --assistant-message-bg: #343a40;
+    --assistant-message-text: #f8f9fa;
+    --sidebar-bg: #343a40;
+    --chat-input-bg: #495057;
+    --shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.3);
+    --shadow-lg: 0 0.5rem 1rem rgba(0, 0, 0, 0.5);
+}
+
+/* 기본 스타일 */
+* {
+    box-sizing: border-box;
+}
+
+html, body {
+    height: 100%;
+    margin: 0;
+    padding: 0;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background-color: var(--bg-primary);
+    color: var(--text-primary);
+    transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+/* 사이드바 스타일 */
+.sidebar {
+    background-color: var(--sidebar-bg);
+    border-right: 1px solid var(--border-color);
+    transition: all 0.3s ease;
+    min-height: 100vh;
+    position: fixed;
+    top: 0;
+    left: -100%;
+    width: 280px;
+    z-index: 1050;
+}
+
+.sidebar.show {
+    left: 0;
+}
+
+/* 데스크톱에서 사이드바는 항상 표시 */
+@media (min-width: 768px) {
+    .sidebar {
+        position: relative;
+        left: 0;
+        width: auto;
+    }
+}
+
+/* 메인 콘텐츠 */
+.main-content {
+    background-color: var(--bg-primary);
+    min-height: 100vh;
+}
+
+/* 채팅 헤더 */
+.chat-header {
+    background-color: var(--bg-secondary);
+    border-bottom: 1px solid var(--border-color) !important;
+}
+
+/* 채팅 메시지 영역 */
+.chat-messages {
+    overflow-y: auto;
+    max-height: calc(100vh - 200px);
+    background-color: var(--bg-primary);
+    padding: 1rem;
+}
+
+/* 메시지 버블 스타일 */
+.message-bubble {
+    max-width: 80%;
+    margin-bottom: 1rem;
+    animation: slideIn 0.3s ease-in-out;
+}
+
+.user-message {
+    margin-left: auto;
+}
+
+.user-message .message-content {
+    background-color: var(--user-message-bg);
+    color: var(--user-message-text);
+    border-radius: 1rem 1rem 0.25rem 1rem;
+    padding: 0.75rem 1rem;
+    box-shadow: var(--shadow);
+    word-wrap: break-word;
+}
+
+.assistant-message .message-content {
+    background-color: var(--assistant-message-bg);
+    color: var(--assistant-message-text);
+    border-radius: 1rem 1rem 1rem 0.25rem;
+    padding: 0.75rem 1rem;
+    box-shadow: var(--shadow);
+    border: 1px solid var(--border-color);
+    word-wrap: break-word;
+}
+
+.message-time {
+    text-align: right;
+    margin-top: 0.25rem;
+    padding: 0 0.5rem;
+}
+
+.user-message .message-time {
+    text-align: right;
+}
+
+.assistant-message .message-time {
+    text-align: left;
+}
+
+/* 출처 링크 스타일 */
+.citations {
+    margin-top: 0.75rem;
+    padding-top: 0.75rem;
+    border-top: 1px solid var(--border-color);
+}
+
+.citations h6 {
+    color: var(--text-secondary);
+    font-size: 0.875rem;
+    margin-bottom: 0.5rem;
+}
+
+.citation-link {
+    display: inline-block;
+    background-color: var(--bg-tertiary);
+    color: var(--text-primary);
+    text-decoration: none;
+    padding: 0.25rem 0.5rem;
+    border-radius: 0.5rem;
+    font-size: 0.8rem;
+    margin: 0.25rem 0.25rem 0.25rem 0;
+    transition: all 0.2s ease;
+    border: 1px solid var(--border-color);
+}
+
+.citation-link:hover {
+    background-color: var(--user-message-bg);
+    color: var(--user-message-text);
+    text-decoration: none;
+    transform: translateY(-1px);
+    box-shadow: var(--shadow);
+}
+
+/* 타이핑 인디케이터 */
+.typing-indicator {
+    padding: 0 1rem;
+}
+
+.typing-animation {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+    padding: 0.75rem 1rem;
+}
+
+.typing-animation span {
+    width: 0.5rem;
+    height: 0.5rem;
+    background-color: var(--text-secondary);
+    border-radius: 50%;
+    animation: typing 1.4s infinite ease-in-out;
+}
+
+.typing-animation span:nth-child(1) {
+    animation-delay: -0.32s;
+}
+
+.typing-animation span:nth-child(2) {
+    animation-delay: -0.16s;
+}
+
+/* 채팅 입력 영역 */
+.chat-input {
+    background-color: var(--chat-input-bg);
+    border-top: 1px solid var(--border-color) !important;
+}
+
+.chat-input .form-control {
+    background-color: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    color: var(--text-primary);
+}
+
+.chat-input .form-control:focus {
+    background-color: var(--bg-secondary);
+    border-color: var(--user-message-bg);
+    color: var(--text-primary);
+    box-shadow: 0 0 0 0.2rem rgba(13, 110, 253, 0.25);
+}
+
+/* 폼 컨트롤 다크 테마 */
+[data-theme="dark"] .form-control,
+[data-theme="dark"] .form-select {
+    background-color: var(--bg-tertiary);
+    border-color: var(--border-color);
+    color: var(--text-primary);
+}
+
+[data-theme="dark"] .form-control:focus,
+[data-theme="dark"] .form-select:focus {
+    background-color: var(--bg-tertiary);
+    border-color: var(--user-message-bg);
+    color: var(--text-primary);
+    box-shadow: 0 0 0 0.2rem rgba(13, 110, 253, 0.25);
+}
+
+/* 애니메이션 */
+@keyframes slideIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes typing {
+    0%, 80%, 100% {
+        transform: scale(0);
+        opacity: 0.5;
+    }
+    40% {
+        transform: scale(1);
+        opacity: 1;
+    }
+}
+
+/* 버튼 스타일 */
+.btn {
+    transition: all 0.2s ease;
+}
+
+.btn:disabled {
+    cursor: not-allowed;
+}
+
+/* 스크롤바 스타일 */
+.chat-messages::-webkit-scrollbar {
+    width: 0.5rem;
+}
+
+.chat-messages::-webkit-scrollbar-track {
+    background: var(--bg-secondary);
+    border-radius: 0.25rem;
+}
+
+.chat-messages::-webkit-scrollbar-thumb {
+    background: var(--text-muted);
+    border-radius: 0.25rem;
+}
+
+.chat-messages::-webkit-scrollbar-thumb:hover {
+    background: var(--text-secondary);
+}
+
+/* 반응형 디자인 */
+@media (max-width: 767px) {
+    .message-bubble {
+        max-width: 95%;
+    }
+    
+    .sidebar {
+        width: 100%;
+    }
+    
+    .main-content {
+        padding-left: 0;
+    }
+    
+    .chat-messages {
+        max-height: calc(100vh - 220px);
+        padding: 0.75rem;
+    }
+}
+
+@media (max-width: 575px) {
+    .message-content {
+        font-size: 0.9rem;
+    }
+    
+    .citation-link {
+        font-size: 0.75rem;
+        padding: 0.2rem 0.4rem;
+    }
+}
+
+/* 토스트 스타일 개선 */
+.toast {
+    backdrop-filter: blur(10px);
+    border: 1px solid var(--border-color);
+}
+
+/* 로딩 상태 */
+.loading {
+    pointer-events: none;
+    opacity: 0.6;
+}
+
+/* 사용자 아바타 */
+.user-avatar, .assistant-avatar {
+    width: 2rem;
+    height: 2rem;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.8rem;
+    margin-right: 0.5rem;
+    flex-shrink: 0;
+}
+
+.user-avatar {
+    background-color: var(--user-message-bg);
+    color: var(--user-message-text);
+}
+
+.assistant-avatar {
+    background-color: var(--text-secondary);
+    color: var(--bg-primary);
+}
+
+/* 메시지 컨테이너 */
+.message-container {
+    display: flex;
+    align-items: flex-start;
+    margin-bottom: 1rem;
+}
+
+.user-message .message-container {
+    flex-direction: row-reverse;
+}
+
+.user-message .user-avatar {
+    margin-left: 0.5rem;
+    margin-right: 0;
+}
+
+/* 사이드바 오버레이 (모바일) */
+.sidebar-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5);
+    z-index: 1040;
+    display: none;
+}
+
+.sidebar-overlay.show {
+    display: block;
+}
+
+@media (min-width: 768px) {
+    .sidebar-overlay {
+        display: none !important;
+    }
+}
