@@ -417,7 +417,14 @@ class PPLXChatApp {
             
             if (response.ok) {
                 const data = await response.json();
-                this.displayAssistantMessage(data.response, data.citations || [], data.timestamp, data.question_type, data.model_used);
+                this.displayAssistantMessage(
+                    data.response, 
+                    data.citations || [], 
+                    data.timestamp, 
+                    data.question_type, 
+                    data.model_used,
+                    data.source_filtering
+                );
             } else {
                 const errorData = await response.json();
                 throw new Error(errorData.error || 'API 요청 실패');
@@ -471,7 +478,7 @@ class PPLXChatApp {
     /**
      * AI 응답 메시지 표시
      */
-    displayAssistantMessage(message, citations = [], timestamp = null, scroll = true, questionType = null, modelUsed = null) {
+    displayAssistantMessage(message, citations = [], timestamp = null, scroll = true, questionType = null, modelUsed = null, sourceFiltering = null) {
         const chatMessages = document.getElementById('chatMessages');
         const messageTime = timestamp ? new Date(timestamp) : new Date();
         
@@ -487,9 +494,24 @@ class PPLXChatApp {
                 </a>`
             ).join('');
             
+            // 소스 필터링 정보 표시
+            let filteringInfo = '';
+            if (sourceFiltering && sourceFiltering.filtered_count > 0) {
+                filteringInfo = `
+                    <div class="filtering-info">
+                        <small class="text-muted">
+                            <i class="fas fa-filter me-1"></i>
+                            ${sourceFiltering.total_sources}개 소스 중 ${sourceFiltering.filtered_sources}개 선별
+                            (${sourceFiltering.filtered_count}개 관련성 낮은 소스 제외)
+                        </small>
+                    </div>
+                `;
+            }
+            
             citationsHtml = `
                 <div class="citations">
-                    <h6><i class="fas fa-link me-1"></i>참고 자료</h6>
+                    <h6><i class="fas fa-link me-1"></i>참고 자료 (${citations.length}개)</h6>
+                    ${filteringInfo}
                     ${citationLinks}
                 </div>
             `;

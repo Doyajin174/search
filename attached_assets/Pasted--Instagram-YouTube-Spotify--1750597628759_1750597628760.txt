@@ -1,0 +1,290 @@
+기능 추가 요청: 검색 소스 필터링 및 관련성 검증 시스템
+
+현재 문제점:
+- "안녕?" 같은 간단한 질문에 Instagram, YouTube, Spotify 등 관련 없는 소스들이 표시됨
+- 질문과 무관한 엔터테인먼트/소셜 미디어 소스들이 참고 자료에 포함됨
+- 모든 검색 결과를 무차별적으로 표시하여 사용자 혼란 야기
+
+개선 목표:
+질문과 관련성이 높고 신뢰할 수 있는 소스만 필터링하여 표시하는 시스템 구축
+
+구현 요구사항:
+
+1. 소스 관련성 분석 함수 구현
+파일 위치: 기존 백엔드 파일 또는 새로운 utils.js 파일
+
+function analyzeSourceRelevance(question, sourceTitle, sourceUrl, sourceContent) {
+    const questionKeywords = extractKeywords(question);
+    const sourceKeywords = extractKeywords(sourceTitle + " " + sourceContent);
+    
+    // 키워드 매칭 점수 계산 (0-100)
+    const keywordScore = calculateKeywordMatch(questionKeywords, sourceKeywords);
+    
+    // 도메인 신뢰도 점수
+    const domainScore = getDomainTrustScore(sourceUrl);
+    
+    // 소스 타입 관련성 점수
+    const typeScore = getSourceTypeScore(sourceUrl, question);
+    
+    // 최종 관련성 점수 (가중평균)
+    const relevanceScore = (keywordScore * 0.5) + (domainScore * 0.3) + (typeScore * 0.2);
+    
+    return {
+        score: relevanceScore,
+        keywords: questionKeywords,
+        domain: extractDomain(sourceUrl),
+        type: getSourceType(sourceUrl)
+    };
+}
+
+2. 도메인별 신뢰도 및 타입 분류 시스템
+
+const DOMAIN_TRUST_SCORES = {
+    // 높은 신뢰도 (90-100점)
+    "wikipedia.org": 95,
+    "naver.com": 90,
+    "daum.net": 90,
+    "gov.kr": 100,
+    "edu": 95,
+    "ac.kr": 95,
+    
+    // 중간 신뢰도 (70-89점)
+    "news.naver.com": 85,
+    "news.daum.net": 85,
+    "ytn.co.kr": 80,
+    "kbs.co.kr": 85,
+    "sbs.co.kr": 85,
+    "mbc.co.kr": 85,
+    "chosun.com": 80,
+    "joongang.co.kr": 80,
+    
+    // 낮은 신뢰도 (30-69점)
+    "blog.naver.com": 50,
+    "tistory.com": 45,
+    "youtube.com": 30,
+    "instagram.com": 20,
+    "facebook.com": 25,
+    "twitter.com": 35,
+    "tiktok.com": 15,
+    "spotify.com": 20
+};
+
+const SOURCE_TYPES = {
+    "official": ["gov.kr", "company.com", "organization.org"],
+    "news": ["news.", "press.", "media."],
+    "academic": ["edu", "ac.kr", "scholar.", "research."],
+    "social": ["instagram.com", "facebook.com", "twitter.com", "tiktok.com"],
+    "entertainment": ["youtube.com", "spotify.com", "netflix.com"],
+    "blog": ["blog.", "tistory.com", "wordpress.com"],
+    "wiki": ["wikipedia.org", "namuwiki.com"]
+};
+
+3. 질문 유형별 소스 필터링 규칙
+
+function getFilteringRules(questionType, question) {
+    const rules = {
+        "greeting": {
+            "minRelevanceScore": 0, // 검색 자체를 비활성화
+            "excludeTypes": ["all"],
+            "maxSources": 0
+        },
+        "info_search": {
+            "minRelevanceScore": 60,
+            "excludeTypes": ["social", "entertainment"],
+            "preferredTypes": ["official", "news", "academic"],
+            "maxSources": 5
+        },
+        "learning": {
+            "minRelevanceScore": 70,
+            "excludeTypes": ["social", "entertainment"],
+            "preferredTypes": ["academic", "wiki", "official"],
+            "maxSources": 4
+        },
+        "realtime": {
+            "minRelevanceScore": 65,
+            "excludeTypes": ["social", "entertainment", "blog"],
+            "preferredTypes": ["news", "official"],
+            "maxSources": 5,
+            "timeFilter": "recent"
+        },
+        "coding": {
+            "minRelevanceScore": 75,
+            "excludeTypes": ["social", "entertainment"],
+            "preferredTypes": ["official", "academic"],
+            "allowedDomains": ["github.com", "stackoverflow.com", "docs."],
+            "maxSources": 4
+        }
+    };
+    
+    return rules[questionType] || rules["info_search"];
+}
+
+4. 소스 필터링 메인 함수
+
+function filterSources(sources, question, questionType) {
+    const rules = getFilteringRules(questionType, question);
+    
+    if (rules.maxSources === 0) {
+        return []; // 검색 비활성화 (인사말 등)
+    }
+    
+    const analyzedSources = sources.map(source => {
+        const analysis = analyzeSourceRelevance(
+            question, 
+            source.title, 
+            source.url, 
+            source.excerpt || ""
+        );
+        
+        return {
+            ...source,
+            relevanceScore: analysis.score,
+            domain: analysis.domain,
+            sourceType: analysis.type,
+            shouldInclude: analysis.score >= rules.minRelevanceScore
+        };
+    });
+    
+    // 필터링 적용
+    let filteredSources = analyzedSources.filter(source => {
+        // 최소 관련성 점수 확인
+        if (source.relevanceScore < rules.minRelevanceScore) return false;
+        
+        // 제외 타입 확인
+        if (rules.excludeTypes.includes(source.sourceType)) return false;
+        
+        // 허용 도메인 확인 (있는 경우)
+        if (rules.allowedDomains && 
+            !rules.allowedDomains.some(domain => source.url.includes(domain))) {
+            return false;
+        }
+        
+        return true;
+    });
+    
+    // 선호 타입 우선 정렬
+    filteredSources.sort((a, b) => {
+        const aPreferred = rules.preferredTypes.includes(a.sourceType);
+        const bPreferred = rules.preferredTypes.includes(b.sourceType);
+        
+        if (aPreferred && !bPreferred) return -1;
+        if (!aPreferred && bPreferred) return 1;
+        
+        return b.relevanceScore - a.relevanceScore; // 관련성 점수 내림차순
+    });
+    
+    // 최대 소스 개수 제한
+    return filteredSources.slice(0, rules.maxSources);
+}
+
+5. PPLX API 응답 처리 로직 수정
+
+기존 API 응답 처리 함수를 수정하여 필터링 적용:
+
+async function processPplxResponse(response, question, questionType) {
+    const originalSources = extractSourcesFromResponse(response);
+    const filteredSources = filterSources(originalSources, question, questionType);
+    
+    // 필터링된 소스로 응답 재구성
+    const processedResponse = {
+        ...response,
+        sources: filteredSources,
+        sourcesCount: filteredSources.length,
+        filteredCount: originalSources.length - filteredSources.length
+    };
+    
+    return processedResponse;
+}
+
+6. 프론트엔드 UI 개선
+
+소스 표시 부분에 필터링 정보 추가:
+
+HTML 구조 개선:
+<div class="sources-section">
+    <div class="sources-header">
+        <h4>참고 자료 (<span id="sources-count">3</span>개)</h4>
+        <span class="filtered-info" id="filtered-info">
+            <!-- 필터링된 소스가 있을 경우 표시 -->
+        </span>
+    </div>
+    <div class="sources-list" id="sources-list">
+        <!-- 필터링된 소스들만 표시 -->
+    </div>
+</div>
+
+JavaScript로 소스 표시:
+function displayFilteredSources(sources, filteredCount) {
+    const sourcesList = document.getElementById('sources-list');
+    const sourcesCount = document.getElementById('sources-count');
+    const filteredInfo = document.getElementById('filtered-info');
+    
+    sourcesCount.textContent = sources.length;
+    
+    if (filteredCount > 0) {
+        filteredInfo.textContent = `(${filteredCount}개 관련성 낮은 소스 제외됨)`;
+        filteredInfo.style.display = 'inline';
+    } else {
+        filteredInfo.style.display = 'none';
+    }
+    
+    sourcesList.innerHTML = sources.map(source => `
+        <div class="source-item" data-relevance="${source.relevanceScore}">
+            <div class="source-header">
+                <span class="source-type-badge ${source.sourceType}">${getTypeDisplayName(source.sourceType)}</span>
+                <span class="relevance-score">${Math.round(source.relevanceScore)}%</span>
+            </div>
+            <a href="${source.url}" target="_blank" class="source-link">
+                ${source.title}
+            </a>
+            <p class="source-excerpt">${source.excerpt}</p>
+        </div>
+    `).join('');
+}
+
+7. 관리자 설정 (선택사항)
+
+설정 패널에 필터링 조정 옵션 추가:
+- 최소 관련성 점수 조정 슬라이더 (기본값: 60)
+- 제외할 소스 타입 체크박스
+- "엄격한 필터링" vs "관대한 필터링" 모드 선택
+
+8. 성능 최적화
+
+function optimizeFiltering() {
+    // 키워드 추출 결과 캐싱
+    const keywordCache = new Map();
+    
+    // 도메인 분석 결과 캐싱  
+    const domainCache = new Map();
+    
+    // 자주 사용되는 분석 결과 메모이제이션
+}
+
+9. 테스트 케이스
+
+테스트할 시나리오:
+- "안녕?" → 모든 소스 필터링됨 (0개)
+- "오늘 날씨" → 뉴스/공식 사이트만 표시
+- "Python 학습" → 교육/공식 문서 우선 표시
+- "K-pop 뉴스" → 엔터테인먼트 소스 허용하되 관련성 높은 것만
+
+10. 로깅 및 분석
+
+필터링 효과 측정을 위한 로그 수집:
+- 질문별 원본 소스 개수 vs 필터링된 소스 개수
+- 사용자 만족도 (필터링 전후 비교)
+- 가장 자주 제외되는 도메인 분석
+
+구현 우선순위:
+1. 기본 관련성 분석 함수 구현
+2. 도메인 신뢰도 시스템 구축  
+3. 질문 유형별 필터링 규칙 적용
+4. 프론트엔드 UI 개선
+5. 성능 최적화 및 캐싱
+
+추가 요청사항:
+- 기존 데이터베이스 구조 유지하면서 필터링 로그 저장 테이블 추가
+- 필터링 설정을 사용자별로 저장할 수 있도록 개인화 설정 확장
+- 에러 발생 시 필터링 없이 원본 결과 표시하는 안전장치
+- 한국어 키워드 추출에 최적화된 알고리즘 사용

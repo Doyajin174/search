@@ -34,6 +34,7 @@ This is a Flask-based web application that provides an AI-powered search interfa
 - **Main Route (`/`)**: Serves the main chat interface
 - **Chat API (`/api/chat`)**: Handles communication with Perplexity AI with intelligent question classification
 - **Model Management**: Dynamic AI model selection and recommendation system
+- **Source Filtering (`source_filter.py`)**: Advanced relevance verification and quality filtering for search results
 - **Conversation CRUD**: Full conversation history management with database persistence
 - **User Settings**: Persistent user preferences including preferred AI model
 - **Error Handling**: Comprehensive error handling for API failures and validation
@@ -122,6 +123,7 @@ Changelog:
 - June 22, 2025. Added conversation history management with CRUD operations
 - June 22, 2025. Implemented multi-model AI selection feature with 7 specialized Perplexity models
 - June 22, 2025. Added model recommendation system based on question type and content analysis
+- June 22, 2025. Implemented sophisticated source filtering and relevance verification system
 ```
 
 ## User Preferences

@@ -422,7 +422,13 @@ def chat():
             'citations': citations,
             'timestamp': user_message_obj.created_at.isoformat(),
             'question_type': question_type,
-            'model_used': selected_model
+            'model_used': selected_model,
+            'source_filtering': {
+                'total_sources': filter_stats.get('total_count', 0),
+                'filtered_sources': len(citations),
+                'filtered_count': filter_stats.get('filtered_count', 0),
+                'filter_description': filter_stats.get('filter_rules', '')
+            } if 'filter_stats' in locals() else None
         })
         
     except requests.exceptions.RequestException as e:
