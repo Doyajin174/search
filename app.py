@@ -29,7 +29,60 @@ db.init_app(app)
 # Perplexity API 설정
 PERPLEXITY_API_KEY = os.environ.get("PERPLEXITY_API_KEY", "your_api_key_here")
 PERPLEXITY_API_URL = "https://api.perplexity.ai/chat/completions"
-PERPLEXITY_MODEL = "llama-3.1-sonar-small-128k-online"
+DEFAULT_MODEL = "sonar-pro"
+
+# PPLX 모델 설정
+PPLX_MODELS = {
+    "sonar-pro": {
+        "name": "Sonar Pro", 
+        "description": "최고 성능의 플래그십 모델 (200k 컨텍스트)",
+        "has_web_search": True,
+        "recommended_for": ["복잡한 질문", "상세한 분석", "최신 정보"],
+        "icon": "fas fa-star"
+    },
+    "sonar": {
+        "name": "Sonar",
+        "description": "균형잡힌 성능의 기본 모델 (128k 컨텍스트)", 
+        "has_web_search": True,
+        "recommended_for": ["일반적인 질문", "빠른 응답"],
+        "icon": "fas fa-balance-scale"
+    },
+    "sonar-deep-research": {
+        "name": "Sonar Deep Research",
+        "description": "심층 연구 및 분석에 특화된 모델",
+        "has_web_search": True,
+        "recommended_for": ["학술 연구", "깊이 있는 분석"],
+        "icon": "fas fa-microscope"
+    },
+    "sonar-reasoning-pro": {
+        "name": "Sonar Reasoning Pro", 
+        "description": "고급 추론 및 논리적 사고에 특화",
+        "has_web_search": True,
+        "recommended_for": ["복잡한 추론", "논리 문제"],
+        "icon": "fas fa-brain"
+    },
+    "sonar-reasoning": {
+        "name": "Sonar Reasoning",
+        "description": "논리적 사고와 추론에 최적화된 모델",
+        "has_web_search": True,
+        "recommended_for": ["논리적 사고", "문제 해결"],
+        "icon": "fas fa-lightbulb"
+    },
+    "r1-1776": {
+        "name": "R1-1776",
+        "description": "웹 검색 없는 순수 언어 모델",
+        "has_web_search": False,
+        "recommended_for": ["창작", "일반 대화", "개인정보 보호"],
+        "icon": "fas fa-pen-fancy"
+    },
+    "codellama-34b-instruct": {
+        "name": "CodeLlama", 
+        "description": "프로그래밍 및 코딩에 특화된 모델",
+        "has_web_search": False,
+        "recommended_for": ["코딩 질문", "프로그래밍 도움"],
+        "icon": "fas fa-code"
+    }
+}
 
 def classify_question(user_input):
     """
@@ -250,7 +303,8 @@ def chat():
                 'response': ai_content,
                 'citations': citations,
                 'timestamp': user_message_obj.created_at.isoformat(),
-                'question_type': question_type
+                'question_type': question_type,
+                'model_used': 'direct_response'  # 직접 응답의 경우
             })
         
         # 검색이 필요한 경우 Perplexity API 호출
@@ -293,20 +347,36 @@ def chat():
             'Content-Type': 'application/json'
         }
         
+        # 사용자가 선택한 모델 사용 (기본값: sonar-pro)
+        selected_model = data.get('selected_model') or user.preferred_model or DEFAULT_MODEL
+        
+        # 모델이 유효한지 확인
+        if selected_model not in PPLX_MODELS:
+            selected_model = DEFAULT_MODEL
+            logging.warning(f"Invalid model {selected_model} requested, using default {DEFAULT_MODEL}")
+        
+        # 선택된 모델이 웹 검색을 지원하지 않는 경우 검색 비활성화
+        model_info = PPLX_MODELS[selected_model]
+        if not model_info["has_web_search"] and response_config.get("use_search", True):
+            logging.info(f"Model {selected_model} doesn't support web search, adjusting response")
+        
         payload = {
-            "model": PERPLEXITY_MODEL,
+            "model": selected_model,
             "messages": messages,
             "temperature": 0.2,
             "top_p": 0.9,
             "return_images": False,
-            "return_related_questions": False,  # 관련 질문 비활성화로 응답 간소화
-            "search_recency_filter": response_config.get("search_recency_filter", "month"),
+            "return_related_questions": False,
             "stream": False,
             "presence_penalty": 0,
             "frequency_penalty": 1
         }
         
-        logging.debug(f"Perplexity API 요청 (질문유형: {question_type}): {payload}")
+        # 웹 검색을 지원하는 모델의 경우에만 검색 설정 추가
+        if model_info["has_web_search"]:
+            payload["search_recency_filter"] = response_config.get("search_recency_filter", "month")
+        
+        logging.debug(f"Perplexity API 요청 (질문유형: {question_type}, 모델: {selected_model}): {payload}")
         
         response = requests.post(PERPLEXITY_API_URL, headers=headers, json=payload, timeout=30)
         response.raise_for_status()
@@ -351,7 +421,8 @@ def chat():
             'response': ai_content,
             'citations': citations,
             'timestamp': user_message_obj.created_at.isoformat(),
-            'question_type': question_type
+            'question_type': question_type,
+            'model_used': selected_model
         })
         
     except requests.exceptions.RequestException as e:
@@ -435,12 +506,18 @@ def save_settings():
         user_name = data.get('user_name', '사용자')
         search_scope = data.get('search_scope', 'general')
         theme = data.get('theme', 'light')
+        preferred_model = data.get('preferred_model', DEFAULT_MODEL)
+        
+        # 모델이 유효한지 확인
+        if preferred_model not in PPLX_MODELS:
+            preferred_model = DEFAULT_MODEL
         
         # 사용자 정보 업데이트
         user = get_or_create_user()
         user.name = user_name
         user.search_scope = search_scope
         user.theme = theme
+        user.preferred_model = preferred_model
         user.updated_at = datetime.utcnow()
         
         db.session.commit()
@@ -458,7 +535,8 @@ def get_settings():
         settings = {
             'user_name': user.name,
             'search_scope': user.search_scope,
-            'theme': user.theme
+            'theme': user.theme,
+            'preferred_model': user.preferred_model
         }
         return jsonify(settings)
     except Exception as e:
@@ -466,7 +544,8 @@ def get_settings():
         return jsonify({
             'user_name': '사용자',
             'search_scope': 'general',
-            'theme': 'light'
+            'theme': 'light',
+            'preferred_model': DEFAULT_MODEL
         })
 
 @app.route('/api/conversations', methods=['GET'])
@@ -586,6 +665,63 @@ def delete_conversation(conversation_id):
     except Exception as e:
         logging.error(f"대화 삭제 오류: {str(e)}")
         return jsonify({'error': '대화 삭제 중 오류가 발생했습니다.'}), 500
+
+@app.route('/api/models', methods=['GET'])
+def get_available_models():
+    """사용 가능한 PPLX 모델 목록 반환"""
+    try:
+        models_info = []
+        for model_id, model_data in PPLX_MODELS.items():
+            models_info.append({
+                'id': model_id,
+                'name': model_data['name'],
+                'description': model_data['description'],
+                'has_web_search': model_data['has_web_search'],
+                'recommended_for': model_data['recommended_for'],
+                'icon': model_data['icon']
+            })
+        
+        return jsonify({
+            'models': models_info,
+            'default_model': DEFAULT_MODEL
+        })
+    except Exception as e:
+        logging.error(f"모델 목록 조회 오류: {str(e)}")
+        return jsonify({'error': '모델 목록을 가져올 수 없습니다.'}), 500
+
+@app.route('/api/model/recommend', methods=['POST'])
+def recommend_model():
+    """질문 유형에 따른 모델 추천"""
+    try:
+        data = request.get_json()
+        question_type = data.get('question_type', 'general')
+        user_message = data.get('message', '').lower()
+        
+        # 질문 내용 기반 모델 추천
+        if any(keyword in user_message for keyword in ['코딩', '프로그래밍', '코드', 'programming', 'code', 'python', 'javascript']):
+            recommended = 'codellama-34b-instruct'
+        elif question_type == 'learning' or any(keyword in user_message for keyword in ['연구', '분석', '논문', '학술']):
+            recommended = 'sonar-deep-research'
+        elif any(keyword in user_message for keyword in ['추론', '논리', '문제해결', 'reasoning']):
+            recommended = 'sonar-reasoning-pro'
+        elif any(keyword in user_message for keyword in ['창작', '글쓰기', '소설', '시']):
+            recommended = 'r1-1776'
+        elif question_type == 'realtime' or any(keyword in user_message for keyword in ['최신', '뉴스', '현재']):
+            recommended = 'sonar-pro'
+        else:
+            recommended = 'sonar'  # 기본 추천
+        
+        model_info = PPLX_MODELS.get(recommended, PPLX_MODELS[DEFAULT_MODEL])
+        
+        return jsonify({
+            'recommended_model': recommended,
+            'model_info': model_info,
+            'reason': f"질문 유형 '{question_type}'에 최적화된 모델입니다."
+        })
+        
+    except Exception as e:
+        logging.error(f"모델 추천 오류: {str(e)}")
+        return jsonify({'error': '모델 추천 중 오류가 발생했습니다.'}), 500
 
 # 데이터베이스 테이블 생성
 with app.app_context():

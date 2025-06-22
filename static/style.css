@@ -502,3 +502,58 @@ html, body {
 .conversation-list::-webkit-scrollbar-thumb:hover {
     background: var(--text-secondary);
 }
+
+/* 모델 선택 관련 스타일 */
+.model-details {
+    background-color: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: 0.5rem;
+    padding: 0.75rem;
+    margin-top: 0.5rem;
+}
+
+.model-used {
+    opacity: 0.8;
+    font-style: italic;
+}
+
+#modelSelect {
+    background-color: var(--bg-secondary);
+    border-color: var(--border-color);
+    color: var(--text-primary);
+}
+
+#modelSelect:focus {
+    background-color: var(--bg-secondary);
+    border-color: var(--user-message-bg);
+    color: var(--text-primary);
+    box-shadow: 0 0 0 0.2rem rgba(13, 110, 253, 0.25);
+}
+
+[data-theme="dark"] #modelSelect {
+    background-color: var(--bg-tertiary);
+    border-color: var(--border-color);
+    color: var(--text-primary);
+}
+
+[data-theme="dark"] #modelSelect option {
+    background-color: var(--bg-tertiary);
+    color: var(--text-primary);
+}
+
+/* 토스트 개선 - 정보 타입 추가 */
+.toast.toast-info .toast-header {
+    background-color: #17a2b8;
+    color: white;
+}
+
+/* 모델 정보 배지 스타일 */
+.badge.bg-secondary {
+    background-color: var(--text-muted) !important;
+    color: var(--bg-primary) !important;
+}
+
+[data-theme="dark"] .badge.bg-secondary {
+    background-color: var(--text-secondary) !important;
+    color: var(--bg-primary) !important;
+}

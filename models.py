@@ -12,6 +12,7 @@ class User(db.Model):
     name = db.Column(db.String(100), nullable=False, default='사용자')
     search_scope = db.Column(db.String(20), nullable=False, default='general')
     theme = db.Column(db.String(10), nullable=False, default='light')
+    preferred_model = db.Column(db.String(50), nullable=False, default='sonar-pro')
     created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
     last_active = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
@@ -26,6 +27,7 @@ class User(db.Model):
             'name': self.name,
             'search_scope': self.search_scope,
             'theme': self.theme,
+            'preferred_model': self.preferred_model,
             'created_at': self.created_at.isoformat(),
             'updated_at': self.updated_at.isoformat(),
             'last_active': self.last_active.isoformat()

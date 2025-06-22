@@ -1,0 +1,161 @@
+추가 기능 요청: PPLX 모델 선택 기능 구현
+
+현재 상황:
+- 현재 하나의 고정된 PPLX 모델만 사용 중
+- 사용자가 다양한 AI 모델 중에서 선택할 수 없음
+
+개선 목표:
+사용자가 상황에 맞는 최적의 PPLX 모델을 선택할 수 있는 기능 추가
+
+사용 가능한 PPLX 모델 목록:
+
+최신 모델 (2025년 기준 권장):
+- sonar-pro: 플래그십 모델 (200k 컨텍스트, 웹 검색 지원) - 가장 고성능
+- sonar: 기본 모델 (128k 컨텍스트, 웹 검색 지원) - 균형잡힌 성능
+- sonar-deep-research: 심층 연구 모델 (128k 컨텍스트, 웹 검색 지원) - 연구/분석용
+- sonar-reasoning-pro: 고급 추론 모델 (128k 컨텍스트, 웹 검색 지원) - 복잡한 추론
+- sonar-reasoning: 추론 모델 (128k 컨텍스트, 웹 검색 지원) - 논리적 사고
+- r1-1776: 특수 모델 (128k 컨텍스트, 웹 검색 없음) - 순수 언어 모델
+
+기존 모델들 (호환성 유지):
+- pplx-70b-chat: 대형 채팅 모델
+- pplx-7b-chat: 소형 채팅 모델
+- mistral-7b-instruct: Mistral 기반 모델
+- llama-2-70b-chat: Llama2 대형 모델
+- codellama-34b-instruct: 코딩 특화 모델
+
+구현 요구사항:
+
+1. 프론트엔드 UI 개선
+위치: 기존 개인화 설정 영역 또는 새로운 설정 패널
+추가할 요소:
+- 모델 선택 드롭다운 메뉴
+- 각 모델의 간단한 설명 툴팁
+- 현재 선택된 모델 표시
+
+HTML 구조 예시:
+<div class="model-selector">
+  <label for="model-select">AI 모델 선택:</label>
+  <select id="model-select" name="model">
+    <optgroup label="최신 모델 (권장)">
+      <option value="sonar-pro">Sonar Pro - 최고 성능 (웹 검색)</option>
+      <option value="sonar">Sonar - 균형잡힌 성능 (웹 검색)</option>
+      <option value="sonar-deep-research">Sonar 심층연구 - 연구/분석용</option>
+      <option value="sonar-reasoning-pro">Sonar 추론Pro - 복잡한 추론</option>
+      <option value="sonar-reasoning">Sonar 추론 - 논리적 사고</option>
+    </optgroup>
+    <optgroup label="특수 모델">
+      <option value="r1-1776">R1-1776 - 순수 언어모델 (검색없음)</option>
+      <option value="codellama-34b-instruct">CodeLlama - 코딩 특화</option>
+    </optgroup>
+  </select>
+  <div class="model-info" id="model-info">
+    모델을 선택하면 설명이 여기에 표시됩니다.
+  </div>
+</div>
+
+2. 백엔드 로직 수정
+파일 위치: app.py (또는 기존 백엔드 파일)
+
+모델 정보 딕셔너리 추가:
+PPLX_MODELS = {
+    "sonar-pro": {
+        "name": "Sonar Pro", 
+        "description": "최고 성능의 플래그십 모델 (200k 컨텍스트)",
+        "has_web_search": True,
+        "recommended_for": ["복잡한 질문", "상세한 분석", "최신 정보"]
+    },
+    "sonar": {
+        "name": "Sonar",
+        "description": "균형잡힌 성능의 기본 모델 (128k 컨텍스트)", 
+        "has_web_search": True,
+        "recommended_for": ["일반적인 질문", "빠른 응답"]
+    },
+    "sonar-deep-research": {
+        "name": "Sonar Deep Research",
+        "description": "심층 연구 및 분석에 특화된 모델",
+        "has_web_search": True,
+        "recommended_for": ["학술 연구", "깊이 있는 분석"]
+    },
+    "sonar-reasoning-pro": {
+        "name": "Sonar Reasoning Pro", 
+        "description": "고급 추론 및 논리적 사고에 특화",
+        "has_web_search": True,
+        "recommended_for": ["복잡한 추론", "논리 문제"]
+    },
+    "r1-1776": {
+        "name": "R1-1776",
+        "description": "웹 검색 없는 순수 언어 모델",
+        "has_web_search": False,
+        "recommended_for": ["창작", "일반 대화", "개인정보 보호"]
+    },
+    "codellama-34b-instruct": {
+        "name": "CodeLlama", 
+        "description": "프로그래밍 및 코딩에 특화된 모델",
+        "has_web_search": False,
+        "recommended_for": ["코딩 질문", "프로그래밍 도움"]
+    }
+}
+
+3. API 호출 로직 수정
+현재 고정된 모델 대신 사용자 선택 모델 사용:
+
+def get_pplx_response(user_message, selected_model="sonar-pro"):
+    # 기존 API 호출 코드에서 model 파라미터를 동적으로 설정
+    payload = {
+        "model": selected_model,  # 사용자가 선택한 모델 사용
+        "messages": [{"role": "user", "content": user_message}],
+        # 기타 기존 설정들...
+    }
+
+4. 상태 관리
+- 선택된 모델을 localStorage에 저장하여 새로고침 후에도 유지
+- 세션별로 다른 모델 사용 가능하도록 구현
+
+JavaScript 예시:
+// 모델 선택 시 저장
+document.getElementById('model-select').addEventListener('change', function() {
+    const selectedModel = this.value;
+    localStorage.setItem('selectedModel', selectedModel);
+    updateModelInfo(selectedModel);
+});
+
+// 페이지 로드 시 저장된 모델 불러오기
+window.addEventListener('load', function() {
+    const savedModel = localStorage.getItem('selectedModel') || 'sonar-pro';
+    document.getElementById('model-select').value = savedModel;
+    updateModelInfo(savedModel);
+});
+
+5. 추천 시스템 (선택사항)
+질문 유형에 따른 모델 자동 추천:
+- 코딩 질문 → CodeLlama 추천
+- 최신 정보 질문 → Sonar Pro 추천  
+- 일반 대화 → Sonar 추천
+- 창작 활동 → R1-1776 추천
+
+6. 사용자 경험 개선
+- 모델 변경 시 "모델이 변경되었습니다" 알림 표시
+- 각 모델의 특징을 쉽게 이해할 수 있는 아이콘 추가
+- 모델별 예상 응답 속도 표시
+
+7. 테스트 케이스
+- 각 모델로 동일한 질문 테스트하여 응답 차이 확인
+- 웹 검색이 있는 모델과 없는 모델의 응답 비교
+- 모델 전환 시 UI 상태 유지 확인
+
+8. 기본 설정
+- 처음 방문자는 "sonar-pro"를 기본 모델로 설정
+- 설정 패널에서 "기본값으로 재설정" 버튼 추가
+
+구현 우선순위:
+1. 모델 선택 UI 추가 (드롭다운 메뉴)
+2. 백엔드 모델 전환 로직 구현
+3. localStorage를 통한 설정 저장
+4. 모델별 설명 및 추천 기능 추가
+
+추가 요청사항:
+- 기존 코드 구조 최대한 유지
+- 모델 전환 시에도 대화 이력은 유지
+- 모델별 비용이나 제한사항이 있다면 사용자에게 안내
+- 에러 발생 시 기본 모델로 자동 전환하는 안전장치 추가

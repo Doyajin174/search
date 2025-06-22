@@ -8,8 +8,11 @@ class PPLXChatApp {
         this.isLoading = false;
         this.userSettings = {
             user_name: '사용자',
-            search_scope: 'general'
+            search_scope: 'general',
+            preferred_model: 'sonar-pro'
         };
+        this.availableModels = {};
+        this.selectedModel = 'sonar-pro';
         
         this.init();
     }
@@ -20,6 +23,7 @@ class PPLXChatApp {
     async init() {
         this.bindEvents();
         this.initTheme();
+        await this.loadAvailableModels();
         await this.loadSettings();
         await this.loadConversation();
         this.updateUserGreeting();
@@ -61,6 +65,11 @@ class PPLXChatApp {
         // 대화 기록 보기 토글
         document.getElementById('showConversations').addEventListener('click', () => {
             this.toggleConversationList();
+        });
+        
+        // 모델 선택
+        document.getElementById('modelSelect').addEventListener('change', (e) => {
+            this.handleModelChange(e.target.value);
         });
         
         // 사이드바 토글 (모바일)
@@ -171,6 +180,70 @@ class PPLXChatApp {
     }
     
     /**
+     * 사용 가능한 모델 목록 로드
+     */
+    async loadAvailableModels() {
+        try {
+            const response = await fetch('/api/models');
+            if (response.ok) {
+                const data = await response.json();
+                this.availableModels = {};
+                
+                const modelSelect = document.getElementById('modelSelect');
+                modelSelect.innerHTML = '';
+                
+                // 모델 그룹별로 정리
+                const latestModels = [];
+                const specialModels = [];
+                
+                data.models.forEach(model => {
+                    this.availableModels[model.id] = model;
+                    
+                    if (model.id.startsWith('sonar')) {
+                        latestModels.push(model);
+                    } else {
+                        specialModels.push(model);
+                    }
+                });
+                
+                // 최신 모델 그룹 추가
+                if (latestModels.length > 0) {
+                    const latestGroup = document.createElement('optgroup');
+                    latestGroup.label = '최신 모델 (권장)';
+                    latestModels.forEach(model => {
+                        const option = document.createElement('option');
+                        option.value = model.id;
+                        option.textContent = `${model.name} - ${model.description}`;
+                        latestGroup.appendChild(option);
+                    });
+                    modelSelect.appendChild(latestGroup);
+                }
+                
+                // 특수 모델 그룹 추가
+                if (specialModels.length > 0) {
+                    const specialGroup = document.createElement('optgroup');
+                    specialGroup.label = '특수 모델';
+                    specialModels.forEach(model => {
+                        const option = document.createElement('option');
+                        option.value = model.id;
+                        option.textContent = `${model.name} - ${model.description}`;
+                        specialGroup.appendChild(option);
+                    });
+                    modelSelect.appendChild(specialGroup);
+                }
+                
+            } else {
+                throw new Error('모델 목록 로드 실패');
+            }
+        } catch (error) {
+            console.error('모델 목록 로드 실패:', error);
+            // 기본 모델 옵션 추가
+            const modelSelect = document.getElementById('modelSelect');
+            modelSelect.innerHTML = '<option value="sonar-pro">Sonar Pro (기본)</option>';
+        }
+    }
+    
+    /**
      * 사용자 설정 로드
      */
     async loadSettings() {
@@ -191,6 +264,11 @@ class PPLXChatApp {
             // UI 업데이트
             document.getElementById('userName').value = this.userSettings.user_name;
             document.getElementById('searchScope').value = this.userSettings.search_scope;
+            document.getElementById('modelSelect').value = this.userSettings.preferred_model || 'sonar-pro';
+            
+            // 선택된 모델 정보 업데이트
+            this.updateModelInfo(this.userSettings.preferred_model || 'sonar-pro');
+            this.selectedModel = this.userSettings.preferred_model || 'sonar-pro';
             
             // 로컬 스토리지에 저장
             localStorage.setItem('userSettings', JSON.stringify(this.userSettings));
@@ -208,12 +286,16 @@ class PPLXChatApp {
             const userName = document.getElementById('userName').value.trim() || '사용자';
             const searchScope = document.getElementById('searchScope').value;
             const theme = document.documentElement.getAttribute('data-theme') || 'light';
+            const preferredModel = document.getElementById('modelSelect').value;
             
             this.userSettings = {
                 user_name: userName,
                 search_scope: searchScope,
-                theme: theme
+                theme: theme,
+                preferred_model: preferredModel
             };
+            
+            this.selectedModel = preferredModel;
             
             // 로컬 스토리지에 저장
             localStorage.setItem('userSettings', JSON.stringify(this.userSettings));
@@ -326,7 +408,8 @@ class PPLXChatApp {
                 body: JSON.stringify({
                     message: message,
                     search_scope: this.userSettings.search_scope,
-                    user_name: this.userSettings.user_name
+                    user_name: this.userSettings.user_name,
+                    selected_model: this.selectedModel
                 })
             });
             
@@ -334,7 +417,7 @@ class PPLXChatApp {
             
             if (response.ok) {
                 const data = await response.json();
-                this.displayAssistantMessage(data.response, data.citations || [], data.timestamp, data.question_type);
+                this.displayAssistantMessage(data.response, data.citations || [], data.timestamp, data.question_type, data.model_used);
             } else {
                 const errorData = await response.json();
                 throw new Error(errorData.error || 'API 요청 실패');
@@ -388,7 +471,7 @@ class PPLXChatApp {
     /**
      * AI 응답 메시지 표시
      */
-    displayAssistantMessage(message, citations = [], timestamp = null, scroll = true, questionType = null) {
+    displayAssistantMessage(message, citations = [], timestamp = null, scroll = true, questionType = null, modelUsed = null) {
         const chatMessages = document.getElementById('chatMessages');
         const messageTime = timestamp ? new Date(timestamp) : new Date();
         
@@ -415,11 +498,26 @@ class PPLXChatApp {
         // 응답 유형에 따른 아이콘 설정
         const responseIcon = questionType === 'greeting' ? 'fas fa-hand-wave' : 'fas fa-robot';
         
+        // 모델 정보 표시
+        let modelInfoHtml = '';
+        if (modelUsed && modelUsed !== 'direct_response' && this.availableModels[modelUsed]) {
+            const modelInfo = this.availableModels[modelUsed];
+            modelInfoHtml = `
+                <div class="model-used mt-2">
+                    <small class="text-muted">
+                        <i class="${modelInfo.icon} me-1"></i>
+                        ${modelInfo.name} 모델 사용
+                    </small>
+                </div>
+            `;
+        }
+        
         messageElement.innerHTML = `
             <div class="message-content">
                 <i class="${responseIcon} me-2"></i>
                 ${this.formatMessage(message)}
                 ${citationsHtml}
+                ${modelInfoHtml}
             </div>
             <div class="message-time">
                 <small class="text-muted">${this.formatTime(messageTime)}</small>
@@ -692,7 +790,18 @@ class PPLXChatApp {
      * 토스트 메시지 표시
      */
     showToast(message, type = 'info') {
-        const toastId = type === 'error' ? 'errorToast' : 'successToast';
+        let toastId, toastClass;
+        
+        if (type === 'error') {
+            toastId = 'errorToast';
+            toastClass = 'toast-error';
+        } else if (type === 'info') {
+            toastId = 'successToast'; // info도 success 토스트 사용
+            toastClass = 'toast-info';
+        } else {
+            toastId = 'successToast';
+            toastClass = 'toast-success';
+        }
         const toastBodyId = type === 'error' ? 'errorToastBody' : 'successToastBody';
         
         const toastElement = document.getElementById(toastId);
@@ -795,6 +904,89 @@ class PPLXChatApp {
         };
         
         return typeMap[questionType] || typeMap['general'];
+    }
+    
+    /**
+     * 모델 변경 처리
+     */
+    handleModelChange(selectedModelId) {
+        this.selectedModel = selectedModelId;
+        this.updateModelInfo(selectedModelId);
+        
+        // 로컬 스토리지에 즉시 저장
+        this.userSettings.preferred_model = selectedModelId;
+        localStorage.setItem('userSettings', JSON.stringify(this.userSettings));
+        
+        // 모델 변경 알림
+        if (this.availableModels[selectedModelId]) {
+            const modelInfo = this.availableModels[selectedModelId];
+            this.showToast(`${modelInfo.name} 모델로 변경되었습니다.`, 'success');
+        }
+    }
+    
+    /**
+     * 모델 정보 업데이트
+     */
+    updateModelInfo(modelId) {
+        const modelInfoDiv = document.getElementById('modelInfo');
+        
+        if (this.availableModels[modelId]) {
+            const model = this.availableModels[modelId];
+            const searchStatus = model.has_web_search ? '웹 검색 지원' : '웹 검색 없음';
+            const recommendedText = model.recommended_for.join(', ');
+            
+            modelInfoDiv.innerHTML = `
+                <div class="model-details">
+                    <div class="d-flex align-items-center mb-1">
+                        <i class="${model.icon} text-primary me-2"></i>
+                        <strong>${model.name}</strong>
+                        <span class="badge bg-secondary ms-2">${searchStatus}</span>
+                    </div>
+                    <div class="text-muted small mb-1">${model.description}</div>
+                    <div class="text-success small">
+                        <i class="fas fa-lightbulb me-1"></i>
+                        적합한 용도: ${recommendedText}
+                    </div>
+                </div>
+            `;
+        } else {
+            modelInfoDiv.innerHTML = '<small class="text-muted">모델 정보를 불러올 수 없습니다.</small>';
+        }
+    }
+    
+    /**
+     * 모델 추천 요청
+     */
+    async getModelRecommendation(message, questionType) {
+        try {
+            const response = await fetch('/api/model/recommend', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    message: message,
+                    question_type: questionType
+                })
+            });
+            
+            if (response.ok) {
+                const data = await response.json();
+                
+                // 현재 선택된 모델과 다른 경우 추천 알림
+                if (data.recommended_model !== this.selectedModel) {
+                    const modelInfo = this.availableModels[data.recommended_model];
+                    if (modelInfo) {
+                        // 추천 모델 정보를 토스트로 표시 (너무 자주 나오지 않도록 제한)
+                        if (Math.random() > 0.7) { // 30% 확률로만 표시
+                            this.showToast(`💡 ${modelInfo.name} 모델이 이 질문에 더 적합할 수 있습니다.`, 'info');
+                        }
+                    }
+                }
+            }
+        } catch (error) {
+            console.error('모델 추천 요청 실패:', error);
+        }
     }
 }
 

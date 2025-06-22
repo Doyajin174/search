@@ -22,7 +22,9 @@ This is a Flask-based web application that provides an AI-powered search interfa
 - **Deployment**: Gunicorn WSGI server with autoscale deployment target
 
 ### Key Design Decisions
-- **Stateless API with Session Storage**: Chose Flask sessions over database storage for simplicity and quick development, suitable for prototype/demo applications
+- **Database-Driven Architecture**: PostgreSQL for persistent storage of users, conversations, and messages
+- **Intelligent Question Classification**: Automatic categorization of user queries (greeting, realtime, learning, info_search, general) for optimized responses
+- **Multi-Model AI Support**: Users can select from multiple Perplexity AI models optimized for different tasks
 - **Client-Side State Management**: JavaScript handles UI state, settings persistence, and dynamic interactions
 - **External AI Service**: Integrated Perplexity AI instead of building custom AI models for faster time-to-market
 
@@ -30,18 +32,22 @@ This is a Flask-based web application that provides an AI-powered search interfa
 
 ### Backend Components (`app.py`)
 - **Main Route (`/`)**: Serves the main chat interface
-- **Chat API (`/api/chat`)**: Handles communication with Perplexity AI
-- **Session Management**: Stores conversation history and user preferences
-- **Error Handling**: Basic error handling for API failures and validation
+- **Chat API (`/api/chat`)**: Handles communication with Perplexity AI with intelligent question classification
+- **Model Management**: Dynamic AI model selection and recommendation system
+- **Conversation CRUD**: Full conversation history management with database persistence
+- **User Settings**: Persistent user preferences including preferred AI model
+- **Error Handling**: Comprehensive error handling for API failures and validation
 
 ### Frontend Components
 - **PPLXChatApp Class (`static/script.js`)**: Main application controller managing:
   - Chat functionality and message handling
   - User settings and preferences
+  - AI model selection and recommendation
+  - Conversation history management
   - Theme management
   - Local storage for persistence
-- **Responsive UI (`templates/index.html`)**: Bootstrap-based interface with sidebar navigation
-- **Custom Styling (`static/style.css`)**: CSS variables for theme switching and modern UI design
+- **Responsive UI (`templates/index.html`)**: Bootstrap-based interface with sidebar navigation and model selection
+- **Custom Styling (`static/style.css`)**: CSS variables for theme switching, question type badges, and modern UI design
 
 ### Configuration
 - **Environment Variables**: API keys and session secrets
@@ -114,6 +120,8 @@ Changelog:
 - June 22, 2025. Added intelligent question classification system (greeting, realtime, learning, info_search, general)
 - June 22, 2025. Integrated PostgreSQL database for persistent storage of users, conversations, and messages
 - June 22, 2025. Added conversation history management with CRUD operations
+- June 22, 2025. Implemented multi-model AI selection feature with 7 specialized Perplexity models
+- June 22, 2025. Added model recommendation system based on question type and content analysis
 ```
 
 ## User Preferences
