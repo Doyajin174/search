@@ -124,10 +124,12 @@ Changelog:
 - June 22, 2025. Implemented multi-model AI selection feature with 7 specialized Perplexity models
 - June 22, 2025. Added model recommendation system based on question type and content analysis
 - June 22, 2025. Implemented sophisticated source filtering and relevance verification system
+- June 22, 2025. Redesigned UI with modern AI interface similar to ChatGPT/Claude with clean layout and improved UX
 ```
 
 ## User Preferences
 
 ```
 Preferred communication style: Simple, everyday language.
+UI Preference: Modern AI interface similar to ChatGPT/Claude with clean, professional design.
 ```

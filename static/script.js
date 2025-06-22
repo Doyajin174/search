@@ -30,6 +30,9 @@ class PPLXChatApp {
         
         // 메시지 입력창에 포커스
         document.getElementById('messageInput').focus();
+        
+        // 모던 UI 이벤트 바인딩
+        this.bindModernUIEvents();
     }
     
     /**
@@ -119,6 +122,66 @@ class PPLXChatApp {
         
         // 실시간 설정 업데이트
         this.setupRealtimeSettingsUpdates();
+    }
+    
+    /**
+     * 모던 UI 이벤트 바인딩
+     */
+    bindModernUIEvents() {
+        // 새 대화 버튼
+        document.getElementById('newChatBtn').addEventListener('click', () => {
+            this.startNewConversation();
+        });
+        
+        // 모바일 메뉴 버튼
+        document.getElementById('mobileMenuBtn').addEventListener('click', () => {
+            this.toggleModernSidebar();
+        });
+        
+        // 사이드바 닫기
+        document.getElementById('sidebarClose').addEventListener('click', () => {
+            this.closeModernSidebar();
+        });
+        
+        // 사이드바 오버레이
+        document.getElementById('sidebarOverlay').addEventListener('click', () => {
+            this.closeModernSidebar();
+        });
+        
+        // 제안 카드 클릭
+        document.querySelectorAll('.suggestion-card').forEach(card => {
+            card.addEventListener('click', () => {
+                const text = card.getAttribute('data-text');
+                document.getElementById('messageInput').value = text;
+                this.sendMessage();
+            });
+        });
+        
+        // 모던 설정 버튼
+        document.getElementById('modernSettingsBtn').addEventListener('click', () => {
+            this.openSettingsModal();
+        });
+        
+        // 모던 테마 버튼
+        document.getElementById('modernThemeBtn').addEventListener('click', () => {
+            this.toggleTheme();
+        });
+        
+        // 모바일 설정 버튼
+        document.getElementById('mobileSettingsBtn').addEventListener('click', () => {
+            this.openSettingsModal();
+        });
+        
+        // 빠른 모델 선택
+        document.getElementById('quickModelSelect').addEventListener('change', (e) => {
+            this.handleModelChange(e.target.value);
+        });
+        
+        // 입력창 자동 리사이즈
+        this.setupAutoResize();
+        
+        // 입력 상태 감지
+        this.setupInputStateDetection();
         
         // 사이드바 토글 (모바일)
         const sidebarToggle = document.getElementById('sidebarToggle');
