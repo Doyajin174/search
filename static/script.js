@@ -277,9 +277,9 @@ class PPLXChatApp {
         // 대화 기록 표시
         conversation.forEach(message => {
             if (message.type === 'user') {
-                this.displayUserMessage(message.content, message.timestamp, false);
+                this.displayUserMessage(message.content, message.timestamp, false, message.question_type);
             } else if (message.type === 'assistant') {
-                this.displayAssistantMessage(message.content, message.citations || [], message.timestamp, false);
+                this.displayAssistantMessage(message.content, message.citations || [], message.timestamp, false, message.question_type);
             }
         });
     }
@@ -299,7 +299,7 @@ class PPLXChatApp {
         this.setLoadingState(true);
         messageInput.value = '';
         
-        // 사용자 메시지 표시
+        // 사용자 메시지 표시 (질문 유형은 응답 후 업데이트)
         this.displayUserMessage(message);
         
         // 타이핑 인디케이터 표시
@@ -322,7 +322,7 @@ class PPLXChatApp {
             
             if (response.ok) {
                 const data = await response.json();
-                this.displayAssistantMessage(data.response, data.citations || [], data.timestamp);
+                this.displayAssistantMessage(data.response, data.citations || [], data.timestamp, data.question_type);
             } else {
                 const errorData = await response.json();
                 throw new Error(errorData.error || 'API 요청 실패');
@@ -342,16 +342,24 @@ class PPLXChatApp {
     /**
      * 사용자 메시지 표시
      */
-    displayUserMessage(message, timestamp = null, scroll = true) {
+    displayUserMessage(message, timestamp = null, scroll = true, questionType = null) {
         const chatMessages = document.getElementById('chatMessages');
         const messageTime = timestamp ? new Date(timestamp) : new Date();
+        
+        // 질문 유형 표시용 아이콘 및 색상
+        const typeInfo = this.getQuestionTypeInfo(questionType);
         
         const messageElement = document.createElement('div');
         messageElement.className = 'message-bubble user-message';
         messageElement.innerHTML = `
             <div class="message-content">
-                <i class="fas fa-user me-2"></i>
-                ${this.escapeHtml(message)}
+                <div class="d-flex align-items-start">
+                    <i class="fas fa-user me-2"></i>
+                    <div class="flex-grow-1">
+                        ${this.escapeHtml(message)}
+                        ${typeInfo.badge ? `<span class="question-type-badge ${typeInfo.class}">${typeInfo.badge}</span>` : ''}
+                    </div>
+                </div>
             </div>
             <div class="message-time">
                 <small class="text-muted">${this.formatTime(messageTime)}</small>
@@ -368,7 +376,7 @@ class PPLXChatApp {
     /**
      * AI 응답 메시지 표시
      */
-    displayAssistantMessage(message, citations = [], timestamp = null, scroll = true) {
+    displayAssistantMessage(message, citations = [], timestamp = null, scroll = true, questionType = null) {
         const chatMessages = document.getElementById('chatMessages');
         const messageTime = timestamp ? new Date(timestamp) : new Date();
         
@@ -392,9 +400,12 @@ class PPLXChatApp {
             `;
         }
         
+        // 응답 유형에 따른 아이콘 설정
+        const responseIcon = questionType === 'greeting' ? 'fas fa-hand-wave' : 'fas fa-robot';
+        
         messageElement.innerHTML = `
             <div class="message-content">
-                <i class="fas fa-robot me-2"></i>
+                <i class="${responseIcon} me-2"></i>
                 ${this.formatMessage(message)}
                 ${citationsHtml}
             </div>
@@ -583,6 +594,41 @@ class PPLXChatApp {
             hour: '2-digit',
             minute: '2-digit'
         });
+    }
+    
+    /**
+     * 질문 유형 정보 반환
+     */
+    getQuestionTypeInfo(questionType) {
+        const typeMap = {
+            'greeting': {
+                badge: '인사',
+                class: 'badge-greeting',
+                icon: 'fas fa-hand-wave'
+            },
+            'realtime': {
+                badge: '실시간',
+                class: 'badge-realtime',
+                icon: 'fas fa-clock'
+            },
+            'learning': {
+                badge: '학습',
+                class: 'badge-learning',
+                icon: 'fas fa-graduation-cap'
+            },
+            'info_search': {
+                badge: '검색',
+                class: 'badge-search',
+                icon: 'fas fa-search'
+            },
+            'general': {
+                badge: null,
+                class: '',
+                icon: 'fas fa-comment'
+            }
+        };
+        
+        return typeMap[questionType] || typeMap['general'];
     }
 }
 

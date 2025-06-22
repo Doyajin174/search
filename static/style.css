@@ -392,3 +392,61 @@ html, body {
         display: none !important;
     }
 }
+
+/* 질문 유형 배지 스타일 */
+.question-type-badge {
+    font-size: 0.7rem;
+    padding: 0.2rem 0.5rem;
+    border-radius: 1rem;
+    margin-left: 0.5rem;
+    display: inline-block;
+}
+
+.badge-greeting {
+    background-color: #d4edda;
+    color: #155724;
+    border: 1px solid #c3e6cb;
+}
+
+.badge-realtime {
+    background-color: #ffeaa7;
+    color: #6c5b00;
+    border: 1px solid #fdcb6e;
+}
+
+.badge-learning {
+    background-color: #d6eaf8;
+    color: #1b4f72;
+    border: 1px solid #aed6f1;
+}
+
+.badge-search {
+    background-color: #e8daef;
+    color: #5b2c87;
+    border: 1px solid #d2b4de;
+}
+
+/* 다크 테마에서 배지 스타일 */
+[data-theme="dark"] .badge-greeting {
+    background-color: #1e4620;
+    color: #b7e4c7;
+    border-color: #2d5a30;
+}
+
+[data-theme="dark"] .badge-realtime {
+    background-color: #3d3500;
+    color: #f1c40f;
+    border-color: #5a5000;
+}
+
+[data-theme="dark"] .badge-learning {
+    background-color: #1a3a52;
+    color: #85c1e9;
+    border-color: #2e5984;
+}
+
+[data-theme="dark"] .badge-search {
+    background-color: #4a2c5c;
+    color: #d7bde2;
+    border-color: #6c3483;
+}

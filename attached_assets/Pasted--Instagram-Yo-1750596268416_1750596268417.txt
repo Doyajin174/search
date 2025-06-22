@@ -1,0 +1,100 @@
+프로젝트 개선 요청: 질문 유형별 응답 방식 개선
+
+현재 문제점:
+- "안녕?" 같은 간단한 인사말에 복잡한 웹 검색 결과가 출력됨
+- 관련성 없는 소스들(Instagram, YouTube, Spotify)이 참고 자료로 표시됨
+- 질문 유형에 관계없이 모든 질문에 동일한 검색 방식 적용
+
+개선 목표:
+질문 유형을 자동 분류하여 각각에 맞는 응답 방식을 제공하는 시스템 구축
+
+구현 요구사항:
+
+1. 질문 분류 함수 추가
+- 파일 위치: app.py (또는 기존 백엔드 파일)
+- 분류 카테고리: greeting(인사), info_search(정보검색), learning(학습), realtime(실시간정보)
+- 키워드 기반 분류 로직 구현
+
+def classify_question(user_input):
+    user_input_lower = user_input.lower()
+    
+    greeting_keywords = ["안녕", "hi", "hello", "고마워", "감사", "bye", "안녕히"]
+    info_keywords = ["뉴스", "정보", "알려줘", "찾아줘", "검색", "어디", "언제", "누구"]
+    learning_keywords = ["설명", "가르쳐", "어떻게", "무엇", "왜", "방법", "예시"]
+    realtime_keywords = ["오늘", "현재", "실시간", "지금", "최신", "날씨", "주가"]
+    
+    if any(keyword in user_input_lower for keyword in greeting_keywords):
+        return "greeting"
+    elif any(keyword in user_input_lower for keyword in realtime_keywords):
+        return "realtime"
+    elif any(keyword in user_input_lower for keyword in learning_keywords):
+        return "learning"
+    elif any(keyword in user_input_lower for keyword in info_keywords):
+        return "info_search"
+    else:
+        return "general"
+
+2. 질문 유형별 응답 설정
+- greeting: 웹 검색 비활성화, 간단한 인사말 응답
+- info_search: 전체 웹 검색 활성화, 상세한 정보 제공
+- learning: 학술 자료 우선, 단계별 설명
+- realtime: 최신 정보 위주, 뉴스/데이터 사이트 우선
+
+3. PPLX API 호출 로직 수정
+- 질문 유형이 "greeting"일 경우 API 호출 없이 직접 응답
+- 다른 유형들은 각각 다른 프롬프트와 검색 설정 적용
+
+응답 예시:
+def get_response_config(question_type):
+    configs = {
+        "greeting": {
+            "use_search": False,
+            "response": "안녕하세요! 무엇을 도와드릴까요?",
+            "max_length": 50
+        },
+        "info_search": {
+            "use_search": True,
+            "prompt_prefix": "다음 질문에 대해 정확하고 상세한 정보를 제공해주세요:",
+            "max_sources": 5
+        },
+        "learning": {
+            "use_search": True,
+            "prompt_prefix": "다음 주제에 대해 단계별로 쉽게 설명해주세요:",
+            "preferred_domains": ["wikipedia", "educational", "academic"]
+        },
+        "realtime": {
+            "use_search": True,
+            "prompt_prefix": "최신 정보를 기반으로 답변해주세요:",
+            "time_filter": "recent",
+            "preferred_domains": ["news", "official"]
+        }
+    }
+    return configs.get(question_type, configs["info_search"])
+
+4. 프론트엔드 개선사항
+- 질문 유형이 표시되도록 UI 개선 (선택사항)
+- 검색 소스 표시 방식 개선 (관련성 높은 소스만 표시)
+- 응답 길이에 따른 UI 조정
+
+5. 테스트 케이스
+- "안녕?" → 웹 검색 없이 간단한 인사말 응답
+- "오늘 날씨" → 최신 날씨 정보 검색
+- "AI 설명해줘" → 학술적 설명 제공
+- "최신 뉴스" → 뉴스 사이트 우선 검색
+
+6. 에러 처리
+- 질문 분류 실패 시 기본 "info_search" 모드로 처리
+- API 호출 실패 시 대체 응답 제공
+
+구현 순서:
+1. 질문 분류 함수 구현 및 테스트
+2. 응답 설정 딕셔너리 작성
+3. 메인 응답 로직에 분류 시스템 통합
+4. 프론트엔드 UI 개선 (선택사항)
+5. 다양한 질문 유형으로 테스트 및 디버깅
+
+추가 요청사항:
+- 기존 코드 구조를 최대한 유지하면서 개선
+- 질문 분류에 실패해도 기본 기능은 정상 작동하도록 안전장치 추가
+- 한국어 질문에 최적화된 키워드 리스트 사용
+- 코드에 상세한 주석 추가

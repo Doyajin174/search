@@ -16,6 +16,103 @@ PERPLEXITY_API_KEY = os.environ.get("PERPLEXITY_API_KEY", "your_api_key_here")
 PERPLEXITY_API_URL = "https://api.perplexity.ai/chat/completions"
 PERPLEXITY_MODEL = "llama-3.1-sonar-small-128k-online"
 
+def classify_question(user_input):
+    """
+    사용자 입력을 분류하여 적절한 응답 방식을 결정
+    
+    Args:
+        user_input (str): 사용자 입력 텍스트
+    
+    Returns:
+        str: 질문 유형 ('greeting', 'info_search', 'learning', 'realtime', 'general')
+    """
+    user_input_lower = user_input.lower().strip()
+    
+    # 인사말 키워드
+    greeting_keywords = ["안녕", "hi", "hello", "고마워", "감사", "bye", "안녕히", "헬로", "하이", "잘가", "수고"]
+    
+    # 실시간 정보 키워드
+    realtime_keywords = ["오늘", "현재", "실시간", "지금", "최신", "날씨", "주가", "뉴스", "속보", "시간", "요즘"]
+    
+    # 학습/설명 키워드
+    learning_keywords = ["설명", "가르쳐", "어떻게", "무엇", "왜", "방법", "예시", "원리", "의미", "뜻", "차이"]
+    
+    # 정보 검색 키워드
+    info_keywords = ["정보", "알려줘", "찾아줘", "검색", "어디", "언제", "누구", "어떤", "무슨", "얼마"]
+    
+    # 인사말 패턴 (짧고 간단한 인사)
+    if len(user_input_lower) <= 10 and any(keyword in user_input_lower for keyword in greeting_keywords):
+        return "greeting"
+    
+    # 실시간 정보 요청
+    if any(keyword in user_input_lower for keyword in realtime_keywords):
+        return "realtime"
+    
+    # 학습/설명 요청
+    if any(keyword in user_input_lower for keyword in learning_keywords):
+        return "learning"
+    
+    # 정보 검색 요청
+    if any(keyword in user_input_lower for keyword in info_keywords):
+        return "info_search"
+    
+    # 기본값: 일반 질문
+    return "general"
+
+def get_response_config(question_type, search_scope):
+    """
+    질문 유형에 따른 응답 설정을 반환
+    
+    Args:
+        question_type (str): 질문 유형
+        search_scope (str): 사용자 설정 검색 범위
+    
+    Returns:
+        dict: 응답 설정 딕셔너리
+    """
+    configs = {
+        "greeting": {
+            "use_search": False,
+            "response": "안녕하세요! 무엇을 도와드릴까요? 궁금한 것이 있으시면 언제든 말씀해 주세요.",
+            "max_length": 100
+        },
+        "info_search": {
+            "use_search": True,
+            "prompt_prefix": "다음 질문에 대해 정확하고 상세한 정보를 제공해주세요",
+            "search_recency_filter": "month",
+            "max_sources": 5
+        },
+        "learning": {
+            "use_search": True,
+            "prompt_prefix": "다음 주제에 대해 단계별로 쉽게 설명해주세요. 초보자도 이해할 수 있도록 차근차근 설명해주세요",
+            "search_recency_filter": "year",
+            "max_sources": 3
+        },
+        "realtime": {
+            "use_search": True,
+            "prompt_prefix": "최신 정보를 기반으로 정확하고 신뢰할 수 있는 답변을 제공해주세요",
+            "search_recency_filter": "day",
+            "max_sources": 4
+        },
+        "general": {
+            "use_search": True,
+            "prompt_prefix": "다음 질문에 대해 도움이 되는 답변을 제공해주세요",
+            "search_recency_filter": "month",
+            "max_sources": 4
+        }
+    }
+    
+    # 사용자 검색 범위 설정에 따라 조정
+    config = configs.get(question_type, configs["general"])
+    
+    if search_scope == 'news' and config.get("use_search"):
+        config["search_recency_filter"] = "day"
+    elif search_scope == 'academic' and config.get("use_search"):
+        config["search_recency_filter"] = "year"
+        config["prompt_prefix"] += ". 학술적이고 전문적인 정보를 우선으로 해주세요"
+    
+    return config
+
 @app.route('/')
 def index():
     """메인 페이지 렌더링"""
@@ -26,7 +123,7 @@ def index():
 
 @app.route('/api/chat', methods=['POST'])
 def chat():
-    """채팅 API 엔드포인트 - Perplexity AI와 통신"""
+    """채팅 API 엔드포인트 - 질문 유형별 맞춤 응답 제공"""
     try:
         data = request.get_json()
         user_message = data.get('message', '').strip()
@@ -36,49 +133,83 @@ def chat():
         if not user_message:
             return jsonify({'error': '메시지를 입력해주세요.'}), 400
         
+        # 질문 유형 자동 분류
+        question_type = classify_question(user_message)
+        logging.debug(f"질문 유형 분류: '{user_message}' -> {question_type}")
+        
+        # 질문 유형에 따른 응답 설정 가져오기
+        response_config = get_response_config(question_type, search_scope)
+        
         # 세션에서 대화 기록 가져오기
         if 'conversation_history' not in session:
             session['conversation_history'] = []
         
         conversation_history = session['conversation_history']
+        timestamp = datetime.now().isoformat()
         
-        # Perplexity API 요청을 위한 메시지 배열 구성
+        # 사용자 메시지를 대화 기록에 추가
+        conversation_history.append({
+            'type': 'user',
+            'content': user_message,
+            'timestamp': timestamp,
+            'user_name': user_name,
+            'question_type': question_type  # 질문 유형도 저장
+        })
+        
+        # 인사말의 경우 검색 없이 직접 응답
+        if not response_config.get("use_search", True):
+            ai_content = response_config["response"]
+            citations = []
+            
+            # AI 응답을 대화 기록에 추가
+            conversation_history.append({
+                'type': 'assistant',
+                'content': ai_content,
+                'citations': citations,
+                'timestamp': timestamp,
+                'question_type': question_type
+            })
+            
+            # 세션 업데이트 (최근 20개 메시지만 유지)
+            if len(conversation_history) > 20:
+                conversation_history = conversation_history[-20:]
+            
+            session['conversation_history'] = conversation_history
+            session.modified = True
+            
+            return jsonify({
+                'success': True,
+                'response': ai_content,
+                'citations': citations,
+                'timestamp': timestamp,
+                'question_type': question_type
+            })
+        
+        # 검색이 필요한 경우 Perplexity API 호출
         messages = []
         
-        # 시스템 메시지 추가 (개인화 설정 반영)
-        system_content = f"당신은 {user_name}님을 위한 AI 검색 어시스턴트입니다. "
-        if search_scope == 'news':
-            system_content += "최신 뉴스와 시사 정보에 중점을 두어 답변해주세요."
-        elif search_scope == 'academic':
-            system_content += "학술적이고 전문적인 정보에 중점을 두어 답변해주세요."
-        else:
-            system_content += "정확하고 유용한 정보를 제공해주세요."
+        # 질문 유형에 맞는 시스템 메시지 구성
+        system_content = f"당신은 {user_name}님을 위한 AI 검색 어시스턴트입니다. {response_config['prompt_prefix']}."
         
         messages.append({
             "role": "system",
             "content": system_content
         })
         
-        # 이전 대화 기록 추가 (최근 5개 대화만)
-        recent_history = conversation_history[-10:] if len(conversation_history) > 10 else conversation_history
+        # 이전 대화 기록 추가 (최근 대화만, 인사말 제외)
+        recent_history = [msg for msg in conversation_history[-10:] if msg.get('question_type') != 'greeting']
         for msg in recent_history:
-            messages.append({
-                "role": "user" if msg['type'] == 'user' else "assistant",
-                "content": msg['content']
-            })
+            if msg['type'] in ['user', 'assistant']:
+                messages.append({
+                    "role": "user" if msg['type'] == 'user' else "assistant",
+                    "content": msg['content']
+                })
         
         # 현재 사용자 메시지 추가
         messages.append({
             "role": "user",
             "content": user_message
         })
-        
-        # 검색 범위에 따른 필터 설정
-        search_recency_filter = "month"
-        if search_scope == 'news':
-            search_recency_filter = "day"
-        elif search_scope == 'academic':
-            search_recency_filter = "year"
         
         # Perplexity API 요청
         headers = {
@@ -92,14 +223,14 @@ def chat():
             "temperature": 0.2,
             "top_p": 0.9,
             "return_images": False,
-            "return_related_questions": True,
-            "search_recency_filter": search_recency_filter,
+            "return_related_questions": False,  # 관련 질문 비활성화로 응답 간소화
+            "search_recency_filter": response_config.get("search_recency_filter", "month"),
             "stream": False,
             "presence_penalty": 0,
             "frequency_penalty": 1
         }
         
-        logging.debug(f"Perplexity API 요청: {payload}")
+        logging.debug(f"Perplexity API 요청 (질문유형: {question_type}): {payload}")
         
         response = requests.post(PERPLEXITY_API_URL, headers=headers, json=payload, timeout=30)
         response.raise_for_status()
@@ -111,23 +242,18 @@ def chat():
         ai_content = api_response['choices'][0]['message']['content']
         citations = api_response.get('citations', [])
         
-        # 대화 기록에 추가
-        timestamp = datetime.now().isoformat()
+        # 출처 필터링 (관련성 높은 출처만 선별)
+        max_sources = response_config.get("max_sources", 4)
+        if len(citations) > max_sources:
+            citations = citations[:max_sources]
         
-        # 사용자 메시지 추가
-        conversation_history.append({
-            'type': 'user',
-            'content': user_message,
-            'timestamp': timestamp,
-            'user_name': user_name
-        })
-        
-        # AI 응답 추가
+        # AI 응답을 대화 기록에 추가
         conversation_history.append({
             'type': 'assistant',
             'content': ai_content,
             'citations': citations,
-            'timestamp': timestamp
+            'timestamp': timestamp,
+            'question_type': question_type
         })
         
         # 세션 업데이트 (최근 20개 메시지만 유지)
@@ -141,7 +267,8 @@ def chat():
             'success': True,
             'response': ai_content,
             'citations': citations,
-            'timestamp': timestamp
+            'timestamp': timestamp,
+            'question_type': question_type
         })
         
     except requests.exceptions.RequestException as e:
