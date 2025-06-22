@@ -72,6 +72,54 @@ class PPLXChatApp {
             this.handleModelChange(e.target.value);
         });
         
+        // 헤더 버튼들
+        document.getElementById('themeToggleHeader').addEventListener('click', () => {
+            this.toggleTheme();
+        });
+        
+        document.getElementById('settingsButton').addEventListener('click', () => {
+            this.openSettingsModal();
+        });
+        
+        document.getElementById('historyButtonHeader').addEventListener('click', () => {
+            this.toggleConversationList();
+        });
+        
+        // 설정 모달 관련
+        document.getElementById('closeSettings').addEventListener('click', () => {
+            this.closeSettingsModal();
+        });
+        
+        document.getElementById('saveSettingsModal').addEventListener('click', () => {
+            this.saveSettingsFromModal();
+        });
+        
+        document.getElementById('resetSettings').addEventListener('click', () => {
+            this.resetToDefaults();
+        });
+        
+        // 설정 탭 전환
+        document.querySelectorAll('.tab-button').forEach(button => {
+            button.addEventListener('click', (e) => {
+                this.switchTab(e.target.dataset.tab);
+            });
+        });
+        
+        // 모달 외부 클릭 시 닫기
+        document.getElementById('settingsModal').addEventListener('click', (e) => {
+            if (e.target.id === 'settingsModal') {
+                this.closeSettingsModal();
+            }
+        });
+        
+        // 키보드 단축키
+        document.addEventListener('keydown', (e) => {
+            this.handleKeyboardShortcuts(e);
+        });
+        
+        // 실시간 설정 업데이트
+        this.setupRealtimeSettingsUpdates();
+        
         // 사이드바 토글 (모바일)
         const sidebarToggle = document.getElementById('sidebarToggle');
         const sidebar = document.getElementById('sidebar');
@@ -1008,6 +1056,335 @@ class PPLXChatApp {
             }
         } catch (error) {
             console.error('모델 추천 요청 실패:', error);
+        }
+    }
+    
+    /**
+     * 설정 모달 열기
+     */
+    openSettingsModal() {
+        const modal = document.getElementById('settingsModal');
+        modal.style.display = 'flex';
+        modal.setAttribute('aria-hidden', 'false');
+        
+        // 설정값들을 모달에 반영
+        this.loadSettingsToModal();
+        
+        // 포커스 관리
+        document.getElementById('userNameModal').focus();
+    }
+    
+    /**
+     * 설정 모달 닫기
+     */
+    closeSettingsModal() {
+        const modal = document.getElementById('settingsModal');
+        modal.style.display = 'none';
+        modal.setAttribute('aria-hidden', 'true');
+    }
+    
+    /**
+     * 설정 탭 전환
+     */
+    switchTab(tabName) {
+        // 모든 탭 버튼과 내용 비활성화
+        document.querySelectorAll('.tab-button').forEach(btn => {
+            btn.classList.remove('active');
+            btn.setAttribute('aria-selected', 'false');
+        });
+        
+        document.querySelectorAll('.tab-content').forEach(content => {
+            content.classList.remove('active');
+        });
+        
+        // 선택된 탭 활성화
+        const selectedButton = document.querySelector(`[data-tab="${tabName}"]`);
+        const selectedContent = document.getElementById(`${tabName}-tab`);
+        
+        if (selectedButton && selectedContent) {
+            selectedButton.classList.add('active');
+            selectedButton.setAttribute('aria-selected', 'true');
+            selectedContent.classList.add('active');
+        }
+    }
+    
+    /**
+     * 현재 설정값들을 모달에 로드
+     */
+    loadSettingsToModal() {
+        // 개인 설정
+        document.getElementById('userNameModal').value = this.userSettings.user_name || '사용자';
+        document.getElementById('searchScopeModal').value = this.userSettings.search_scope || 'general';
+        
+        // AI 모델 설정
+        this.loadAvailableModelsToModal();
+        document.getElementById('modelSelectModal').value = this.userSettings.preferred_model || 'sonar-pro';
+        this.updateModalModelInfo(this.userSettings.preferred_model || 'sonar-pro');
+        
+        // 테마 설정
+        const currentTheme = document.documentElement.getAttribute('data-theme') || 'light';
+        document.querySelector(`input[name="themeModal"][value="${currentTheme}"]`).checked = true;
+        
+        // 글자 크기
+        const currentFontSize = getComputedStyle(document.documentElement).getPropertyValue('--base-font-size') || '14px';
+        const fontSize = parseInt(currentFontSize);
+        document.getElementById('fontSize').value = fontSize;
+        document.getElementById('fontSizeValue').textContent = fontSize + 'px';
+        
+        // 기타 설정들 기본값 설정
+        document.getElementById('relevanceThreshold').value = 60;
+        document.getElementById('relevanceValue').textContent = '60';
+    }
+    
+    /**
+     * 모달용 모델 목록 로드
+     */
+    async loadAvailableModelsToModal() {
+        const modalSelect = document.getElementById('modelSelectModal');
+        modalSelect.innerHTML = '';
+        
+        // 기존 availableModels 사용
+        if (Object.keys(this.availableModels).length > 0) {
+            const latestModels = [];
+            const specialModels = [];
+            
+            Object.values(this.availableModels).forEach(model => {
+                if (model.id.startsWith('sonar')) {
+                    latestModels.push(model);
+                } else {
+                    specialModels.push(model);
+                }
+            });
+            
+            // 최신 모델 그룹
+            if (latestModels.length > 0) {
+                const latestGroup = document.createElement('optgroup');
+                latestGroup.label = '최신 모델 (권장)';
+                latestModels.forEach(model => {
+                    const option = document.createElement('option');
+                    option.value = model.id;
+                    option.textContent = `${model.name} - ${model.description}`;
+                    latestGroup.appendChild(option);
+                });
+                modalSelect.appendChild(latestGroup);
+            }
+            
+            // 특수 모델 그룹
+            if (specialModels.length > 0) {
+                const specialGroup = document.createElement('optgroup');
+                specialGroup.label = '특수 모델';
+                specialModels.forEach(model => {
+                    const option = document.createElement('option');
+                    option.value = model.id;
+                    option.textContent = `${model.name} - ${model.description}`;
+                    specialGroup.appendChild(option);
+                });
+                modalSelect.appendChild(specialGroup);
+            }
+        }
+    }
+    
+    /**
+     * 모달에서 모델 정보 업데이트
+     */
+    updateModalModelInfo(modelId) {
+        const modelInfoCard = document.getElementById('modelInfoCard');
+        
+        if (this.availableModels[modelId]) {
+            const model = this.availableModels[modelId];
+            const searchStatus = model.has_web_search ? '웹 검색 지원' : '웹 검색 없음';
+            const recommendedText = model.recommended_for.join(', ');
+            
+            modelInfoCard.innerHTML = `
+                <div class="model-details">
+                    <div class="d-flex align-items-center mb-2">
+                        <i class="${model.icon} text-primary me-2"></i>
+                        <strong>${model.name}</strong>
+                        <span class="badge bg-secondary ms-2">${searchStatus}</span>
+                    </div>
+                    <div class="text-muted small mb-2">${model.description}</div>
+                    <div class="text-success small">
+                        <i class="fas fa-lightbulb me-1"></i>
+                        적합한 용도: ${recommendedText}
+                    </div>
+                </div>
+            `;
+        }
+    }
+    
+    /**
+     * 모달에서 설정 저장
+     */
+    async saveSettingsFromModal() {
+        try {
+            const userName = document.getElementById('userNameModal').value.trim() || '사용자';
+            const searchScope = document.getElementById('searchScopeModal').value;
+            const preferredModel = document.getElementById('modelSelectModal').value;
+            const selectedTheme = document.querySelector('input[name="themeModal"]:checked').value;
+            const fontSize = document.getElementById('fontSize').value;
+            
+            // 설정 업데이트
+            this.userSettings = {
+                user_name: userName,
+                search_scope: searchScope,
+                preferred_model: preferredModel,
+                theme: selectedTheme
+            };
+            
+            this.selectedModel = preferredModel;
+            
+            // 테마 적용
+            this.toggleTheme(selectedTheme === 'dark');
+            
+            // 글자 크기 적용
+            document.documentElement.style.setProperty('--base-font-size', fontSize + 'px');
+            
+            // 사이드바 설정도 업데이트
+            document.getElementById('userName').value = userName;
+            document.getElementById('searchScope').value = searchScope;
+            document.getElementById('modelSelect').value = preferredModel;
+            this.updateModelInfo(preferredModel);
+            
+            // 로컬 스토리지에 저장
+            localStorage.setItem('userSettings', JSON.stringify(this.userSettings));
+            
+            // 서버에 저장
+            const response = await fetch('/api/settings', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(this.userSettings)
+            });
+            
+            if (response.ok) {
+                this.showNotification('설정이 저장되었습니다.', 'success');
+                this.updateUserGreeting();
+                this.closeSettingsModal();
+            } else {
+                throw new Error('서버 설정 저장 실패');
+            }
+            
+        } catch (error) {
+            console.error('설정 저장 실패:', error);
+            this.showNotification('설정 저장에 실패했습니다.', 'error');
+        }
+    }
+    
+    /**
+     * 기본값으로 복원
+     */
+    resetToDefaults() {
+        if (confirm('모든 설정을 기본값으로 복원하시겠습니까?')) {
+            this.userSettings = {
+                user_name: '사용자',
+                search_scope: 'general',
+                preferred_model: 'sonar-pro',
+                theme: 'light'
+            };
+            
+            this.loadSettingsToModal();
+            this.showNotification('설정이 기본값으로 복원되었습니다.', 'info');
+        }
+    }
+    
+    /**
+     * 키보드 단축키 처리
+     */
+    handleKeyboardShortcuts(e) {
+        // Ctrl+, : 설정 열기
+        if (e.ctrlKey && e.key === ',') {
+            e.preventDefault();
+            this.openSettingsModal();
+        }
+        
+        // Ctrl+T : 테마 전환
+        if (e.ctrlKey && e.key === 't') {
+            e.preventDefault();
+            this.toggleTheme();
+        }
+        
+        // Ctrl+H : 대화 기록
+        if (e.ctrlKey && e.key === 'h') {
+            e.preventDefault();
+            this.toggleConversationList();
+        }
+        
+        // ESC : 모달 닫기
+        if (e.key === 'Escape') {
+            this.closeSettingsModal();
+        }
+    }
+    
+    /**
+     * 실시간 설정 업데이트 설정
+     */
+    setupRealtimeSettingsUpdates() {
+        // 모델 선택 변경
+        document.getElementById('modelSelectModal').addEventListener('change', (e) => {
+            this.updateModalModelInfo(e.target.value);
+        });
+        
+        // 글자 크기 슬라이더
+        document.getElementById('fontSize').addEventListener('input', (e) => {
+            const value = e.target.value;
+            document.getElementById('fontSizeValue').textContent = value + 'px';
+            document.documentElement.style.setProperty('--base-font-size', value + 'px');
+        });
+        
+        // 관련성 필터 슬라이더
+        document.getElementById('relevanceThreshold').addEventListener('input', (e) => {
+            document.getElementById('relevanceValue').textContent = e.target.value;
+        });
+        
+        // 테마 선택
+        document.querySelectorAll('input[name="themeModal"]').forEach(radio => {
+            radio.addEventListener('change', (e) => {
+                const isDark = e.target.value === 'dark';
+                this.toggleTheme(isDark);
+            });
+        });
+    }
+    
+    /**
+     * 알림 표시 (개선된 버전)
+     */
+    showNotification(message, type = 'info', duration = 4000) {
+        const container = document.getElementById('notificationContainer');
+        const notification = document.createElement('div');
+        
+        const icons = {
+            success: '✅',
+            error: '❌',
+            info: 'ℹ️',
+            warning: '⚠️'
+        };
+        
+        notification.className = `notification ${type}`;
+        notification.innerHTML = `
+            <span class="notification-icon">${icons[type]}</span>
+            <span class="notification-text">${message}</span>
+            <button class="notification-close" aria-label="알림 닫기">&times;</button>
+        `;
+        
+        // 닫기 버튼 이벤트
+        notification.querySelector('.notification-close').addEventListener('click', () => {
+            notification.remove();
+        });
+        
+        container.appendChild(notification);
+        
+        // 자동 제거
+        setTimeout(() => {
+            if (notification.parentNode) {
+                notification.remove();
+            }
+        }, duration);
+        
+        // 최대 알림 개수 제한 (5개)
+        const notifications = container.querySelectorAll('.notification');
+        if (notifications.length > 5) {
+            notifications[0].remove();
         }
     }
 }

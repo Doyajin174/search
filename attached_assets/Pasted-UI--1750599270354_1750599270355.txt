@@ -1,0 +1,386 @@
+UI 개선 요청: 설정 메뉴 접근성 및 사용성 향상
+
+현재 문제점:
+- 설정 메뉴가 화면에서 잘 보이지 않거나 찾기 어려움
+- 개인화 설정들(사용자 이름, 모델 선택, 검색 범위 등)에 접근하기 불편함
+- 모바일 환경에서 설정 메뉴 사용성 저하
+- 설정 변경 후 피드백이 명확하지 않음
+
+개선 목표:
+사용자가 쉽고 직관적으로 모든 설정에 접근할 수 있는 통합 설정 시스템 구축
+
+구현 요구사항:
+
+1. 헤더 영역 설정 버튼 추가
+위치: 채팅 인터페이스 상단 헤더
+
+HTML 구조:
+<header class="app-header">
+    <div class="header-left">
+        <h1 class="app-title">PPLX AI Search</h1>
+    </div>
+    <div class="header-right">
+        <button id="theme-toggle" class="icon-button" title="테마 전환 (Ctrl+T)">
+            <span class="theme-icon">🌙</span>
+        </button>
+        <button id="settings-button" class="icon-button" title="설정 (Ctrl+,)">
+            <span class="settings-icon">⚙️</span>
+        </button>
+        <button id="history-button" class="icon-button" title="대화 기록 (Ctrl+H)">
+            <span class="history-icon">📜</span>
+        </button>
+    </div>
+</header>
+
+2. 통합 설정 모달/패널 구현
+
+모달 창 구조:
+<div id="settings-modal" class="modal" style="display: none;">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2>설정</h2>
+            <button class="close-button" id="close-settings">&times;</button>
+        </div>
+        
+        <div class="settings-tabs">
+            <button class="tab-button active" data-tab="personal">개인 설정</button>
+            <button class="tab-button" data-tab="ai-model">AI 모델</button>
+            <button class="tab-button" data-tab="search">검색 설정</button>
+            <button class="tab-button" data-tab="display">화면 설정</button>
+            <button class="tab-button" data-tab="advanced">고급 설정</button>
+        </div>
+        
+        <div class="settings-content">
+            <!-- 탭별 설정 내용 -->
+        </div>
+        
+        <div class="modal-footer">
+            <button id="reset-settings" class="secondary-button">기본값 복원</button>
+            <button id="save-settings" class="primary-button">저장</button>
+        </div>
+    </div>
+</div>
+
+3. 탭별 설정 항목 구성
+
+개인 설정 탭 (personal):
+<div class="tab-content active" id="personal-tab">
+    <div class="setting-group">
+        <label for="user-name">사용자 이름</label>
+        <input type="text" id="user-name" placeholder="이름을 입력하세요" maxlength="20">
+        <small class="setting-description">AI가 대화에서 사용할 이름입니다</small>
+    </div>
+    
+    <div class="setting-group">
+        <label for="language">언어</label>
+        <select id="language">
+            <option value="ko">한국어</option>
+            <option value="en">English</option>
+        </select>
+    </div>
+    
+    <div class="setting-group">
+        <label>대화 기록</label>
+        <div class="checkbox-group">
+            <label class="checkbox-label">
+                <input type="checkbox" id="save-history" checked>
+                <span class="checkmark"></span>
+                대화 기록 저장
+            </label>
+            <label class="checkbox-label">
+                <input type="checkbox" id="auto-delete">
+                <span class="checkmark"></span>
+                30일 후 자동 삭제
+            </label>
+        </div>
+    </div>
+</div>
+
+AI 모델 탭 (ai-model):
+<div class="tab-content" id="ai-model-tab">
+    <div class="setting-group">
+        <label for="model-select">AI 모델 선택</label>
+        <select id="model-select">
+            <optgroup label="최신 모델 (권장)">
+                <option value="sonar-pro">Sonar Pro - 최고 성능</option>
+                <option value="sonar">Sonar - 균형잡힌 성능</option>
+                <option value="sonar-deep-research">Sonar 심층연구</option>
+            </optgroup>
+        </select>
+        <div class="model-info-card" id="model-info-card">
+            <!-- 선택된 모델 정보 표시 -->
+        </div>
+    </div>
+    
+    <div class="setting-group">
+        <label>자동 모델 추천</label>
+        <label class="toggle-switch">
+            <input type="checkbox" id="auto-model-recommend" checked>
+            <span class="toggle-slider"></span>
+            <span class="toggle-text">질문 유형에 따라 최적 모델 자동 추천</span>
+        </label>
+    </div>
+</div>
+
+검색 설정 탭 (search):
+<div class="tab-content" id="search-tab">
+    <div class="setting-group">
+        <label for="search-scope">검색 범위</label>
+        <div class="checkbox-group">
+            <label class="checkbox-label">
+                <input type="checkbox" id="scope-news" checked>
+                <span class="checkmark"></span>
+                뉴스 & 미디어
+            </label>
+            <label class="checkbox-label">
+                <input type="checkbox" id="scope-academic" checked>
+                <span class="checkmark"></span>
+                학술 & 교육
+            </label>
+            <label class="checkbox-label">
+                <input type="checkbox" id="scope-official">
+                <span class="checkmark"></span>
+                공식 문서
+            </label>
+        </div>
+    </div>
+    
+    <div class="setting-group">
+        <label for="relevance-threshold">관련성 필터 강도</label>
+        <div class="slider-container">
+            <input type="range" id="relevance-threshold" min="30" max="90" value="60" step="10">
+            <div class="slider-labels">
+                <span>관대함</span>
+                <span>보통</span>
+                <span>엄격함</span>
+            </div>
+        </div>
+        <small class="setting-description">높을수록 더 관련성 높은 결과만 표시</small>
+    </div>
+    
+    <div class="setting-group">
+        <label for="max-sources">최대 참고 자료 수</label>
+        <select id="max-sources">
+            <option value="3">3개</option>
+            <option value="5" selected>5개</option>
+            <option value="7">7개</option>
+            <option value="10">10개</option>
+        </select>
+    </div>
+</div>
+
+화면 설정 탭 (display):
+<div class="tab-content" id="display-tab">
+    <div class="setting-group">
+        <label>테마</label>
+        <div class="theme-selector">
+            <label class="theme-option">
+                <input type="radio" name="theme" value="light">
+                <div class="theme-preview light-preview">
+                    <div class="preview-header"></div>
+                    <div class="preview-content"></div>
+                </div>
+                <span>라이트 모드</span>
+            </label>
+            <label class="theme-option">
+                <input type="radio" name="theme" value="dark" checked>
+                <div class="theme-preview dark-preview">
+                    <div class="preview-header"></div>
+                    <div class="preview-content"></div>
+                </div>
+                <span>다크 모드</span>
+            </label>
+            <label class="theme-option">
+                <input type="radio" name="theme" value="auto">
+                <div class="theme-preview auto-preview">
+                    <div class="preview-header"></div>
+                    <div class="preview-content"></div>
+                </div>
+                <span>시스템 설정</span>
+            </label>
+        </div>
+    </div>
+    
+    <div class="setting-group">
+        <label for="font-size">글자 크기</label>
+        <div class="slider-container">
+            <input type="range" id="font-size" min="12" max="20" value="14" step="1">
+            <span class="slider-value">14px</span>
+        </div>
+    </div>
+    
+    <div class="setting-group">
+        <label>애니메이션</label>
+        <label class="toggle-switch">
+            <input type="checkbox" id="enable-animations" checked>
+            <span class="toggle-slider"></span>
+            <span class="toggle-text">타이핑 애니메이션 및 전환 효과</span>
+        </label>
+    </div>
+</div>
+
+4. 모바일 최적화 설정 UI
+
+모바일에서는 풀스크린 설정 패널:
+@media (max-width: 768px) {
+    .modal-content {
+        width: 100vw;
+        height: 100vh;
+        max-width: none;
+        margin: 0;
+        border-radius: 0;
+    }
+    
+    .settings-tabs {
+        display: flex;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+    
+    .tab-button {
+        min-width: 100px;
+        white-space: nowrap;
+    }
+}
+
+5. 키보드 단축키 지원
+
+JavaScript 단축키 구현:
+document.addEventListener('keydown', function(e) {
+    // Ctrl+, : 설정 열기
+    if (e.ctrlKey && e.key === ',') {
+        e.preventDefault();
+        openSettingsModal();
+    }
+    
+    // Ctrl+T : 테마 전환
+    if (e.ctrlKey && e.key === 't') {
+        e.preventDefault();
+        toggleTheme();
+    }
+    
+    // Ctrl+H : 대화 기록
+    if (e.ctrlKey && e.key === 'h') {
+        e.preventDefault();
+        openHistoryPanel();
+    }
+    
+    // ESC : 모달 닫기
+    if (e.key === 'Escape') {
+        closeAllModals();
+    }
+});
+
+6. 설정 변경 즉시 반영 시스템
+
+실시간 설정 적용:
+function applySettingChange(settingName, value) {
+    switch(settingName) {
+        case 'theme':
+            document.body.className = `theme-${value}`;
+            break;
+        case 'fontSize':
+            document.documentElement.style.setProperty('--base-font-size', value + 'px');
+            break;
+        case 'userName':
+            updateUserName(value);
+            break;
+        case 'aiModel':
+            updateSelectedModel(value);
+            showNotification(`AI 모델이 ${value}로 변경되었습니다`);
+            break;
+    }
+    
+    // localStorage에 즉시 저장
+    saveSettingToStorage(settingName, value);
+}
+
+7. 시각적 피드백 시스템
+
+알림 토스트 구현:
+<div id="notification-container" class="notification-container">
+    <!-- 동적으로 생성되는 알림들 -->
+</div>
+
+function showNotification(message, type = 'success', duration = 3000) {
+    const notification = document.createElement('div');
+    notification.className = `notification ${type}`;
+    notification.innerHTML = `
+        <span class="notification-icon">${getNotificationIcon(type)}</span>
+        <span class="notification-text">${message}</span>
+        <button class="notification-close">&times;</button>
+    `;
+    
+    document.getElementById('notification-container').appendChild(notification);
+    
+    // 자동 제거
+    setTimeout(() => {
+        notification.remove();
+    }, duration);
+}
+
+8. 설정 검증 및 에러 처리
+
+입력값 검증:
+function validateSettings(settings) {
+    const errors = [];
+    
+    if (settings.userName && settings.userName.length > 20) {
+        errors.push('사용자 이름은 20자 이하여야 합니다');
+    }
+    
+    if (settings.relevanceThreshold < 30 || settings.relevanceThreshold > 90) {
+        errors.push('관련성 필터 강도가 유효 범위를 벗어났습니다');
+    }
+    
+    return errors;
+}
+
+9. 설정 내보내기/가져오기 기능 (고급 설정)
+
+고급 설정 탭:
+<div class="tab-content" id="advanced-tab">
+    <div class="setting-group">
+        <label>설정 백업</label>
+        <div class="button-group">
+            <button id="export-settings" class="secondary-button">설정 내보내기</button>
+            <button id="import-settings" class="secondary-button">설정 가져오기</button>
+        </div>
+        <input type="file" id="settings-file-input" accept=".json" style="display: none;">
+    </div>
+    
+    <div class="setting-group">
+        <label>데이터 관리</label>
+        <div class="button-group">
+            <button id="clear-history" class="warning-button">대화 기록 삭제</button>
+            <button id="reset-all" class="danger-button">모든 설정 초기화</button>
+        </div>
+    </div>
+</div>
+
+10. 접근성 개선 (Accessibility)
+
+ARIA 라벨 및 키보드 내비게이션:
+- 모든 설정 요소에 적절한 라벨링
+- Tab 키로 순서대로 이동 가능
+- 스크린 리더 지원
+- 고대비 모드 지원
+
+구현 우선순위:
+1. 헤더 설정 버튼 추가 및 모달 기본 구조
+2. 탭 시스템 및 개인 설정 구현
+3. AI 모델 및 검색 설정 탭 완성
+4. 모바일 최적화 및 반응형 디자인
+5. 키보드 단축키 및 접근성 개선
+
+테스트 시나리오:
+- 데스크톱/모바일에서 설정 접근 테스트
+- 각 설정 변경 시 즉시 반영 확인
+- 키보드만으로 모든 설정 조작 가능한지 테스트
+- 설정 저장/복원 기능 테스트
+
+추가 요청사항:
+- 기존 개인화 설정 데이터와 호환성 유지
+- 설정 변경 시 성능 영향 최소화
+- 다국어 지원 준비 (라벨 텍스트 분리)
+- 설정 변경 이력을 로그로 저장하여 문제 진단 가능하도록 구현
