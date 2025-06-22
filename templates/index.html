@@ -1,203 +1,385 @@
 <!DOCTYPE html>
-<html lang="ko">
+<html lang="ko" data-theme="light">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PPLX AI 검색 서비스</title>
-    
-    <!-- Bootstrap 5 CSS -->
+    <title>PPLX AI Search</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    
-    <!-- Font Awesome Icons -->
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
-    
-    <!-- Custom CSS -->
-    <link href="{{ url_for('static', filename='style.css') }}" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
-<body>
-    <div class="container-fluid h-100">
-        <div class="row h-100">
-            <!-- 사이드바 (설정 패널) -->
-            <div class="col-12 col-md-3 col-lg-2 sidebar" id="sidebar">
-                <div class="d-flex flex-column h-100 p-3">
-                    <!-- 로고 및 제목 -->
-                    <div class="mb-4">
-                        <h4 class="text-primary">
-                            <i class="fas fa-search me-2"></i>
-                            PPLX AI 검색
-                        </h4>
+<body class="modern-ai-app">
+    <!-- 헤더 네비게이션 -->
+    <header class="app-header">
+        <div class="header-container">
+            <div class="header-left">
+                <button class="logo-btn" id="logoBtn" title="홈으로 돌아가기">
+                    <div class="logo-icon">
+                        <i class="fas fa-search"></i>
                     </div>
-                    
-                    <!-- 사용자 설정 -->
-                    <div class="mb-4">
-                        <h6 class="text-muted mb-3">개인화 설정</h6>
-                        
-                        <!-- 사용자 이름 -->
-                        <div class="mb-3">
-                            <label for="userName" class="form-label">사용자 이름</label>
-                            <input type="text" class="form-control" id="userName" placeholder="이름을 입력하세요" value="사용자">
-                        </div>
-                        
-                        <!-- 검색 범위 -->
-                        <div class="mb-3">
-                            <label for="searchScope" class="form-label">검색 범위</label>
-                            <select class="form-select" id="searchScope">
-                                <option value="general">일반</option>
-                                <option value="news">뉴스</option>
-                                <option value="academic">학술</option>
+                    <span class="logo-text">PPLX</span>
+                </button>
+                
+                <!-- 모바일 메뉴 버튼 (채팅 모드에서만 표시) -->
+                <button class="mobile-menu-btn d-lg-none" id="mobileMenuBtn" style="display: none;">
+                    <i class="fas fa-bars"></i>
+                </button>
+            </div>
+            
+            <div class="header-right">
+                <button class="theme-toggle-btn" id="themeToggleBtn" title="다크모드 전환">
+                    <i class="fas fa-moon theme-icon"></i>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- 메인 앱 컨테이너 -->
+    <div class="app-container">
+        <!-- Welcome Screen -->
+        <div class="welcome-screen" id="welcomeScreen">
+            <div class="welcome-content">
+                <!-- 로고 섹션 -->
+                <div class="welcome-logo">
+                    <div class="gradient-logo">
+                        <i class="fas fa-search"></i>
+                    </div>
+                    <h1 class="welcome-title">PPLX AI Search</h1>
+                    <p class="welcome-subtitle">AI와 실시간 검색으로 정확한 답변을 찾아보세요</p>
+                </div>
+
+                <!-- 메인 검색 섹션 -->
+                <div class="main-search-section">
+                    <!-- 모델 선택 -->
+                    <div class="model-selector-wrapper">
+                        <div class="model-selector">
+                            <i class="fas fa-robot model-icon"></i>
+                            <select id="welcomeModelSelect" class="model-select">
+                                <option value="sonar-pro">Sonar Pro - 최고 성능</option>
+                                <option value="sonar">Sonar - 균형잡힌 성능</option>
+                                <option value="sonar-deep-research">Deep Research - 심층 분석</option>
+                                <option value="codellama">CodeLlama - 코딩 전문</option>
                             </select>
                         </div>
+                    </div>
+
+                    <!-- 메인 검색창 -->
+                    <div class="main-search-container">
+                        <div class="search-input-wrapper">
+                            <textarea 
+                                id="welcomeMessageInput"
+                                placeholder="무엇이든 물어보세요..."
+                                rows="1"
+                                maxlength="4000"
+                            ></textarea>
+                            <button class="search-submit-btn" id="welcomeSubmitBtn" disabled>
+                                <i class="fas fa-arrow-right"></i>
+                            </button>
+                        </div>
                         
-                        <!-- AI 모델 선택 -->
-                        <div class="mb-3">
-                            <label for="modelSelect" class="form-label">
-                                AI 모델 선택
-                                <i class="fas fa-info-circle text-muted ms-1" title="질문 유형에 맞는 모델을 선택하세요"></i>
-                            </label>
-                            <select class="form-select" id="modelSelect">
-                                <option value="">모델 로딩중...</option>
-                            </select>
-                            <div class="model-info mt-2" id="modelInfo">
-                                <small class="text-muted">모델을 선택하면 설명이 여기에 표시됩니다.</small>
+                        <!-- 검색 옵션 -->
+                        <div class="search-options">
+                            <div class="search-mode-selector">
+                                <label class="search-mode-option">
+                                    <input type="radio" name="searchMode" value="web" checked>
+                                    <span class="option-label">
+                                        <i class="fas fa-globe"></i>
+                                        웹 검색
+                                    </span>
+                                </label>
+                                <label class="search-mode-option">
+                                    <input type="radio" name="searchMode" value="academic">
+                                    <span class="option-label">
+                                        <i class="fas fa-graduation-cap"></i>
+                                        학술 검색
+                                    </span>
+                                </label>
+                                <label class="search-mode-option">
+                                    <input type="radio" name="searchMode" value="general">
+                                    <span class="option-label">
+                                        <i class="fas fa-comment"></i>
+                                        일반 대화
+                                    </span>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 추천 프롬프트 카드 -->
+                <div class="suggestion-section">
+                    <h3 class="suggestions-title">무엇을 도와드릴까요?</h3>
+                    <div class="suggestion-grid">
+                        <div class="suggestion-card" data-prompt="오늘 날씨는 어때?">
+                            <div class="card-icon">
+                                <i class="fas fa-cloud-sun"></i>
+                            </div>
+                            <div class="card-content">
+                                <h4>날씨 정보</h4>
+                                <p>현재 날씨와 예보를 확인해보세요</p>
                             </div>
                         </div>
                         
-                        <!-- 설정 저장 버튼 -->
-                        <button class="btn btn-primary btn-sm w-100" id="saveSettings">
-                            <i class="fas fa-save me-1"></i>
-                            설정 저장
-                        </button>
+                        <div class="suggestion-card" data-prompt="최신 기술 트렌드 알려줘">
+                            <div class="card-icon">
+                                <i class="fas fa-trending-up"></i>
+                            </div>
+                            <div class="card-content">
+                                <h4>기술 트렌드</h4>
+                                <p>최신 IT 기술 동향을 알아보세요</p>
+                            </div>
+                        </div>
+                        
+                        <div class="suggestion-card" data-prompt="Python 딕셔너리 사용법 알려줘">
+                            <div class="card-icon">
+                                <i class="fas fa-code"></i>
+                            </div>
+                            <div class="card-content">
+                                <h4>프로그래밍</h4>
+                                <p>코딩 문제를 해결해보세요</p>
+                            </div>
+                        </div>
+                        
+                        <div class="suggestion-card" data-prompt="맛있는 한식 레시피 추천해줘">
+                            <div class="card-icon">
+                                <i class="fas fa-utensils"></i>
+                            </div>
+                            <div class="card-content">
+                                <h4>요리 레시피</h4>
+                                <p>맛있는 요리법을 찾아보세요</p>
+                            </div>
+                        </div>
+                        
+                        <div class="suggestion-card" data-prompt="효과적인 학습 방법 알려줘">
+                            <div class="card-icon">
+                                <i class="fas fa-book-open"></i>
+                            </div>
+                            <div class="card-content">
+                                <h4>학습 도움</h4>
+                                <p>효과적인 공부법을 배워보세요</p>
+                            </div>
+                        </div>
+                        
+                        <div class="suggestion-card" data-prompt="건강한 생활습관 조언해줘">
+                            <div class="card-icon">
+                                <i class="fas fa-heart"></i>
+                            </div>
+                            <div class="card-content">
+                                <h4>건강 관리</h4>
+                                <p>건강한 라이프스타일 팁을 얻어보세요</p>
+                            </div>
+                        </div>
                     </div>
-                    
-                    <!-- 테마 토글 -->
-                    <div class="mb-4">
-                        <h6 class="text-muted mb-3">테마</h6>
-                        <div class="form-check form-switch">
-                            <input class="form-check-input" type="checkbox" id="themeToggle">
-                            <label class="form-check-label" for="themeToggle">
-                                <i class="fas fa-moon me-1"></i>
-                                다크 모드
-                            </label>
+                </div>
+            </div>
+        </div>
+
+        <!-- Chat Interface -->
+        <div class="chat-interface" id="chatInterface" style="display: none;">
+            <!-- 사이드바 -->
+            <aside class="chat-sidebar" id="chatSidebar">
+                <div class="sidebar-header">
+                    <button class="new-chat-btn" id="newChatBtn">
+                        <i class="fas fa-plus"></i>
+                        <span>새 대화</span>
+                    </button>
+                </div>
+                
+                <div class="chat-history">
+                    <div class="history-section">
+                        <h3 class="history-title">오늘</h3>
+                        <div class="history-list" id="todayHistory">
+                            <!-- 오늘의 대화 기록 -->
                         </div>
                     </div>
                     
-                    <!-- 대화 기록 관리 -->
-                    <div class="mb-4">
-                        <h6 class="text-muted mb-3">대화 관리</h6>
-                        <button class="btn btn-outline-secondary btn-sm w-100 mb-2" id="newChat">
-                            <i class="fas fa-plus me-1"></i>
-                            새 대화 시작
-                        </button>
-                        <button class="btn btn-outline-info btn-sm w-100 mb-2" id="showConversations">
-                            <i class="fas fa-history me-1"></i>
-                            대화 기록 보기
-                        </button>
-                        <button class="btn btn-outline-danger btn-sm w-100" id="clearChat">
-                            <i class="fas fa-trash me-1"></i>
-                            현재 대화 삭제
-                        </button>
+                    <div class="history-section">
+                        <h3 class="history-title">어제</h3>
+                        <div class="history-list" id="yesterdayHistory">
+                            <!-- 어제의 대화 기록 -->
+                        </div>
                     </div>
                     
-                    <!-- 대화 목록 (숨김/표시) -->
-                    <div class="conversation-list" id="conversationList" style="display: none;">
-                        <h6 class="text-muted mb-2">최근 대화</h6>
-                        <div class="conversation-items" id="conversationItems">
-                            <!-- 대화 목록이 여기에 동적으로 추가됩니다 -->
+                    <div class="history-section">
+                        <h3 class="history-title">지난 7일</h3>
+                        <div class="history-list" id="weekHistory">
+                            <!-- 지난 주의 대화 기록 -->
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="sidebar-footer">
+                    <div class="user-info">
+                        <div class="user-avatar">
+                            <i class="fas fa-user"></i>
+                        </div>
+                        <div class="user-details">
+                            <div class="user-name" id="chatUserName">사용자</div>
+                            <div class="user-status">온라인</div>
+                        </div>
+                    </div>
+                    
+                    <button class="settings-btn" id="chatSettingsBtn" title="설정">
+                        <i class="fas fa-cog"></i>
+                    </button>
+                </div>
+            </aside>
+
+            <!-- 메인 채팅 영역 -->
+            <main class="chat-main">
+                <!-- 채팅 메시지 -->
+                <div class="chat-messages" id="chatMessages">
+                    <!-- 메시지들이 여기에 동적으로 추가됩니다 -->
+                </div>
+
+                <!-- 입력 영역 -->
+                <div class="chat-input-section">
+                    <div class="input-container">
+                        <div class="input-wrapper">
+                            <textarea 
+                                id="chatMessageInput"
+                                placeholder="메시지를 입력하세요..."
+                                rows="1"
+                                maxlength="4000"
+                            ></textarea>
+                            
+                            <div class="input-actions">
+                                <button class="action-btn" id="attachBtn" title="파일 첨부">
+                                    <i class="fas fa-paperclip"></i>
+                                </button>
+                                <button class="send-btn" id="chatSendBtn" disabled>
+                                    <i class="fas fa-arrow-up"></i>
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <!-- 타이핑 인디케이터 -->
+                        <div class="typing-indicator" id="typingIndicator" style="display: none;">
+                            <div class="typing-avatar">
+                                <i class="fas fa-robot"></i>
+                            </div>
+                            <div class="typing-content">
+                                <div class="typing-dots">
+                                    <span></span>
+                                    <span></span>
+                                    <span></span>
+                                </div>
+                                <span class="typing-text">AI가 답변을 생성하고 있습니다...</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="input-footer">
+                        <div class="input-options">
+                            <select id="chatModelSelect" class="quick-model-select">
+                                <option value="sonar-pro">Sonar Pro</option>
+                                <option value="sonar">Sonar</option>
+                                <option value="sonar-deep-research">Deep Research</option>
+                            </select>
+                        </div>
+                        <div class="input-hint">
+                            Enter로 전송 • Shift+Enter로 줄바꿈
+                        </div>
+                    </div>
+                </div>
+            </main>
+        </div>
+    </div>
+
+    <!-- 사이드바 오버레이 (모바일) -->
+    <div class="sidebar-overlay" id="sidebarOverlay"></div>
+
+    <!-- 기존 설정 모달 유지 -->
+    <div id="settingsModal" class="modal" style="display: none;" role="dialog" aria-labelledby="settingsTitle" aria-hidden="true">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="settingsTitle">설정</h2>
+                <button class="close-button" id="closeSettings" aria-label="설정 닫기">&times;</button>
+            </div>
+            
+            <div class="settings-tabs" role="tablist">
+                <button class="tab-button active" data-tab="personal" role="tab" aria-selected="true">
+                    <i class="fas fa-user me-1"></i>개인 설정
+                </button>
+                <button class="tab-button" data-tab="ai-model" role="tab" aria-selected="false">
+                    <i class="fas fa-robot me-1"></i>AI 모델
+                </button>
+                <button class="tab-button" data-tab="search" role="tab" aria-selected="false">
+                    <i class="fas fa-search me-1"></i>검색 설정
+                </button>
+            </div>
+            
+            <div class="settings-content">
+                <div class="tab-content active" id="personal-tab" role="tabpanel">
+                    <div class="setting-group">
+                        <label for="userNameModal" class="setting-label">사용자 이름</label>
+                        <input type="text" id="userNameModal" class="form-control" placeholder="이름을 입력하세요" maxlength="20">
+                    </div>
+                    
+                    <div class="setting-group">
+                        <label for="searchScopeModal" class="setting-label">기본 검색 범위</label>
+                        <select id="searchScopeModal" class="form-select">
+                            <option value="general">일반</option>
+                            <option value="news">뉴스</option>
+                            <option value="academic">학술</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="tab-content" id="ai-model-tab" role="tabpanel">
+                    <div class="setting-group">
+                        <label for="modelSelectModal" class="setting-label">기본 AI 모델</label>
+                        <select id="modelSelectModal" class="form-select">
+                            <option value="sonar-pro">Sonar Pro</option>
+                            <option value="sonar">Sonar</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="tab-content" id="search-tab" role="tabpanel">
+                    <div class="setting-group">
+                        <label class="setting-label">고급 검색 옵션</label>
+                        <div class="checkbox-group">
+                            <label class="checkbox-label">
+                                <input type="checkbox" id="enableSourceFilter" checked>
+                                <span class="checkmark"></span>
+                                <span class="checkbox-text">소스 필터링 활성화</span>
+                            </label>
                         </div>
                     </div>
                 </div>
             </div>
             
-            <!-- 메인 채팅 영역 -->
-            <div class="col-12 col-md-9 col-lg-10 main-content">
-                <div class="d-flex flex-column h-100">
-                    <!-- 헤더 -->
-                    <div class="chat-header d-flex justify-content-between align-items-center p-3 border-bottom">
-                        <div>
-                            <h5 class="mb-0">AI 검색 채팅</h5>
-                            <small class="text-muted" id="userGreeting">안녕하세요, 사용자님!</small>
-                        </div>
-                        
-                        <!-- 모바일 사이드바 토글 -->
-                        <button class="btn btn-outline-secondary d-md-none" id="sidebarToggle">
-                            <i class="fas fa-cog"></i>
-                        </button>
-                    </div>
-                    
-                    <!-- 채팅 메시지 영역 -->
-                    <div class="chat-messages flex-grow-1 p-3" id="chatMessages">
-                        <!-- 초기 환영 메시지 -->
-                        <div class="message-bubble assistant-message">
-                            <div class="message-content">
-                                <i class="fas fa-robot me-2"></i>
-                                안녕하세요! PPLX AI 검색 서비스입니다. 궁금한 것이 있으시면 언제든 물어보세요. 
-                                최신 정보를 실시간으로 검색하여 답변드리겠습니다.
-                            </div>
-                            <div class="message-time">
-                                <small class="text-muted">지금</small>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <!-- 타이핑 인디케이터 -->
-                    <div class="typing-indicator" id="typingIndicator" style="display: none;">
-                        <div class="message-bubble assistant-message">
-                            <div class="typing-animation">
-                                <span></span>
-                                <span></span>
-                                <span></span>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <!-- 입력 영역 -->
-                    <div class="chat-input p-3 border-top">
-                        <form id="chatForm" class="d-flex gap-2">
-                            <input type="text" class="form-control" id="messageInput" 
-                                   placeholder="메시지를 입력하세요..." autocomplete="off" required>
-                            <button type="submit" class="btn btn-primary" id="sendButton">
-                                <i class="fas fa-paper-plane"></i>
-                                <span class="d-none d-sm-inline ms-1">전송</span>
-                            </button>
-                        </form>
-                    </div>
+            <div class="modal-footer">
+                <button id="resetSettings" class="btn btn-outline-secondary">기본값 복원</button>
+                <button id="saveSettingsModal" class="btn btn-primary">저장</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 알림 컨테이너 -->
+    <div id="notificationContainer" class="notification-container"></div>
+
+    <!-- 기존 사이드바 (숨김 처리) -->
+    <div style="display: none;">
+        <div class="sidebar" id="sidebar">
+            <div class="sidebar-content">
+                <div class="user-settings">
+                    <input type="text" class="form-control" id="userName" value="사용자">
+                    <select class="form-select" id="searchScope">
+                        <option value="general">일반</option>
+                        <option value="news">뉴스</option>
+                        <option value="academic">학술</option>
+                    </select>
+                    <select class="form-select" id="modelSelect">
+                        <option value="sonar-pro">Sonar Pro</option>
+                    </select>
                 </div>
             </div>
         </div>
     </div>
-    
-    <!-- 에러 토스트 -->
-    <div class="toast-container position-fixed bottom-0 end-0 p-3">
-        <div id="errorToast" class="toast" role="alert" aria-live="assertive" aria-atomic="true">
-            <div class="toast-header bg-danger text-white">
-                <i class="fas fa-exclamation-triangle me-2"></i>
-                <strong class="me-auto">오류</strong>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="toast"></button>
-            </div>
-            <div class="toast-body" id="errorToastBody">
-                <!-- 에러 메시지가 여기에 표시됩니다 -->
-            </div>
-        </div>
-    </div>
-    
-    <!-- 성공 토스트 -->
-    <div class="toast-container position-fixed bottom-0 end-0 p-3">
-        <div id="successToast" class="toast" role="alert" aria-live="assertive" aria-atomic="true">
-            <div class="toast-header bg-success text-white">
-                <i class="fas fa-check-circle me-2"></i>
-                <strong class="me-auto">성공</strong>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="toast"></button>
-            </div>
-            <div class="toast-body" id="successToastBody">
-                <!-- 성공 메시지가 여기에 표시됩니다 -->
-            </div>
-        </div>
-    </div>
-    
-    <!-- Bootstrap 5 JavaScript -->
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    
-    <!-- Custom JavaScript -->
+
+    <!-- JavaScript -->
     <script src="{{ url_for('static', filename='script.js') }}"></script>
 </body>
 </html>

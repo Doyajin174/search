@@ -28,11 +28,14 @@ class PPLXChatApp {
         await this.loadConversation();
         this.updateUserGreeting();
         
-        // 메시지 입력창에 포커스
-        document.getElementById('messageInput').focus();
+        // 현재 상태에 따라 포커스 설정
+        this.setInitialFocus();
         
         // 모던 UI 이벤트 바인딩
         this.bindModernUIEvents();
+        
+        // 초기 상태 설정
+        this.setState('welcome');
     }
     
     /**
@@ -128,62 +131,27 @@ class PPLXChatApp {
      * 모던 UI 이벤트 바인딩
      */
     bindModernUIEvents() {
-        // 새 대화 버튼
-        document.getElementById('newChatBtn').addEventListener('click', () => {
-            this.startNewConversation();
+        // 로고 버튼 (홈으로 돌아가기)
+        document.getElementById('logoBtn').addEventListener('click', () => {
+            this.setState('welcome');
         });
         
-        // 모바일 메뉴 버튼
-        document.getElementById('mobileMenuBtn').addEventListener('click', () => {
-            this.toggleModernSidebar();
-        });
-        
-        // 사이드바 닫기
-        document.getElementById('sidebarClose').addEventListener('click', () => {
-            this.closeModernSidebar();
-        });
-        
-        // 사이드바 오버레이
-        document.getElementById('sidebarOverlay').addEventListener('click', () => {
-            this.closeModernSidebar();
-        });
-        
-        // 제안 카드 클릭
-        document.querySelectorAll('.suggestion-card').forEach(card => {
-            card.addEventListener('click', () => {
-                const text = card.getAttribute('data-text');
-                document.getElementById('messageInput').value = text;
-                this.sendMessage();
-            });
-        });
-        
-        // 모던 설정 버튼
-        document.getElementById('modernSettingsBtn').addEventListener('click', () => {
-            this.openSettingsModal();
-        });
-        
-        // 모던 테마 버튼
-        document.getElementById('modernThemeBtn').addEventListener('click', () => {
+        // 테마 토글 버튼
+        document.getElementById('themeToggleBtn').addEventListener('click', () => {
             this.toggleTheme();
         });
         
-        // 모바일 설정 버튼
-        document.getElementById('mobileSettingsBtn').addEventListener('click', () => {
-            this.openSettingsModal();
-        });
+        // Welcome Screen 이벤트들
+        this.bindWelcomeEvents();
         
-        // 빠른 모델 선택
-        document.getElementById('quickModelSelect').addEventListener('change', (e) => {
-            this.handleModelChange(e.target.value);
-        });
+        // Chat Interface 이벤트들
+        this.bindChatEvents();
         
-        // 입력창 자동 리사이즈
-        this.setupAutoResize();
+        // 모바일 사이드바 관련
+        this.bindMobileSidebarEvents();
         
-        // 입력 상태 감지
-        this.setupInputStateDetection();
-        
-        // 사이드바 토글 (모바일)
+        // 설정 관련
+        this.bindSettingsEvents();
         const sidebarToggle = document.getElementById('sidebarToggle');
         const sidebar = document.getElementById('sidebar');
         
@@ -1348,6 +1316,569 @@ class PPLXChatApp {
             
             this.loadSettingsToModal();
             this.showNotification('설정이 기본값으로 복원되었습니다.', 'info');
+        }
+    }
+    
+    /**
+     * 상태 전환 (Welcome <-> Chat)
+     */
+    setState(newState) {
+        if (this.currentState === newState) return;
+        
+        const welcomeScreen = document.getElementById('welcomeScreen');
+        const chatInterface = document.getElementById('chatInterface');
+        const mobileMenuBtn = document.getElementById('mobileMenuBtn');
+        
+        this.currentState = newState;
+        
+        if (newState === 'welcome') {
+            // Welcome Screen 표시
+            welcomeScreen.style.display = 'flex';
+            chatInterface.style.display = 'none';
+            mobileMenuBtn.style.display = 'none';
+            
+            // Welcome 입력창에 포커스
+            setTimeout(() => {
+                document.getElementById('welcomeMessageInput').focus();
+            }, 100);
+            
+        } else if (newState === 'chat') {
+            // Chat Interface 표시
+            welcomeScreen.style.display = 'none';
+            chatInterface.style.display = 'flex';
+            mobileMenuBtn.style.display = 'block';
+            
+            // Chat 입력창에 포커스
+            setTimeout(() => {
+                document.getElementById('chatMessageInput').focus();
+            }, 100);
+        }
+        
+        // 상태 변경 애니메이션
+        this.animateStateTransition(newState);
+    }
+    
+    /**
+     * 상태 전환 애니메이션
+     */
+    animateStateTransition(newState) {
+        const container = document.querySelector('.app-container');
+        container.style.opacity = '0.95';
+        container.style.transform = 'scale(0.98)';
+        
+        setTimeout(() => {
+            container.style.opacity = '1';
+            container.style.transform = 'scale(1)';
+            container.style.transition = 'all 0.3s ease';
+        }, 150);
+        
+        setTimeout(() => {
+            container.style.transition = '';
+        }, 450);
+    }
+    
+    /**
+     * Welcome Screen 이벤트 바인딩
+     */
+    bindWelcomeEvents() {
+        // Welcome 검색 제출
+        const welcomeInput = document.getElementById('welcomeMessageInput');
+        const welcomeSubmitBtn = document.getElementById('welcomeSubmitBtn');
+        
+        welcomeSubmitBtn.addEventListener('click', () => {
+            this.handleWelcomeSubmit();
+        });
+        
+        welcomeInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                this.handleWelcomeSubmit();
+            }
+        });
+        
+        // 입력 상태 감지
+        welcomeInput.addEventListener('input', () => {
+            const hasText = welcomeInput.value.trim().length > 0;
+            welcomeSubmitBtn.disabled = !hasText;
+        });
+        
+        // 제안 카드 클릭
+        document.querySelectorAll('.suggestion-card').forEach(card => {
+            card.addEventListener('click', () => {
+                const prompt = card.getAttribute('data-prompt');
+                welcomeInput.value = prompt;
+                this.handleWelcomeSubmit();
+            });
+        });
+        
+        // 모델 선택
+        document.getElementById('welcomeModelSelect').addEventListener('change', (e) => {
+            this.selectedModel = e.target.value;
+        });
+        
+        // 검색 모드 선택
+        document.querySelectorAll('input[name="searchMode"]').forEach(radio => {
+            radio.addEventListener('change', (e) => {
+                this.userSettings.search_scope = e.target.value;
+            });
+        });
+        
+        // Welcome 입력창 자동 리사이즈
+        this.setupWelcomeAutoResize();
+    }
+    
+    /**
+     * Chat Interface 이벤트 바인딩
+     */
+    bindChatEvents() {
+        // 새 대화 버튼
+        document.getElementById('newChatBtn').addEventListener('click', () => {
+            this.startNewConversation();
+        });
+        
+        // Chat 메시지 전송
+        const chatInput = document.getElementById('chatMessageInput');
+        const chatSendBtn = document.getElementById('chatSendBtn');
+        
+        chatSendBtn.addEventListener('click', () => {
+            this.handleChatSubmit();
+        });
+        
+        chatInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                this.handleChatSubmit();
+            }
+        });
+        
+        // Chat 입력 상태 감지
+        chatInput.addEventListener('input', () => {
+            const hasText = chatInput.value.trim().length > 0;
+            chatSendBtn.disabled = !hasText;
+        });
+        
+        // Chat 모델 선택
+        document.getElementById('chatModelSelect').addEventListener('change', (e) => {
+            this.selectedModel = e.target.value;
+        });
+        
+        // 설정 버튼
+        document.getElementById('chatSettingsBtn').addEventListener('click', () => {
+            this.openSettingsModal();
+        });
+        
+        // Chat 입력창 자동 리사이즈
+        this.setupChatAutoResize();
+    }
+    
+    /**
+     * 모바일 사이드바 이벤트 바인딩
+     */
+    bindMobileSidebarEvents() {
+        // 모바일 메뉴 버튼
+        document.getElementById('mobileMenuBtn').addEventListener('click', () => {
+            this.toggleChatSidebar();
+        });
+        
+        // 사이드바 오버레이
+        document.getElementById('sidebarOverlay').addEventListener('click', () => {
+            this.closeChatSidebar();
+        });
+    }
+    
+    /**
+     * 설정 관련 이벤트 바인딩
+     */
+    bindSettingsEvents() {
+        // 설정 모달 관련은 기존 코드 유지
+        document.getElementById('closeSettings').addEventListener('click', () => {
+            this.closeSettingsModal();
+        });
+        
+        document.getElementById('saveSettingsModal').addEventListener('click', () => {
+            this.saveSettingsFromModal();
+        });
+        
+        // 설정 탭 전환
+        document.querySelectorAll('.tab-button').forEach(button => {
+            button.addEventListener('click', (e) => {
+                this.switchTab(e.target.dataset.tab);
+            });
+        });
+    }
+    
+    /**
+     * Welcome 화면에서 메시지 제출
+     */
+    async handleWelcomeSubmit() {
+        const input = document.getElementById('welcomeMessageInput');
+        const message = input.value.trim();
+        
+        if (!message) return;
+        
+        // Chat 모드로 전환
+        this.setState('chat');
+        
+        // 메시지 전송
+        await this.sendMessage(message);
+        
+        // Welcome 입력창 초기화
+        input.value = '';
+    }
+    
+    /**
+     * Chat 화면에서 메시지 제출
+     */
+    async handleChatSubmit() {
+        const input = document.getElementById('chatMessageInput');
+        const message = input.value.trim();
+        
+        if (!message) return;
+        
+        // 메시지 전송
+        await this.sendMessage(message);
+        
+        // Chat 입력창 초기화
+        input.value = '';
+        input.style.height = 'auto';
+    }
+    
+    /**
+     * Welcome 입력창 자동 리사이즈
+     */
+    setupWelcomeAutoResize() {
+        const textarea = document.getElementById('welcomeMessageInput');
+        
+        textarea.addEventListener('input', () => {
+            textarea.style.height = 'auto';
+            textarea.style.height = Math.min(textarea.scrollHeight, 120) + 'px';
+        });
+    }
+    
+    /**
+     * Chat 입력창 자동 리사이즈
+     */
+    setupChatAutoResize() {
+        const textarea = document.getElementById('chatMessageInput');
+        
+        textarea.addEventListener('input', () => {
+            textarea.style.height = 'auto';
+            textarea.style.height = Math.min(textarea.scrollHeight, 120) + 'px';
+        });
+    }
+    
+    /**
+     * Chat 사이드바 토글
+     */
+    toggleChatSidebar() {
+        const sidebar = document.getElementById('chatSidebar');
+        const overlay = document.getElementById('sidebarOverlay');
+        
+        sidebar.classList.toggle('open');
+        overlay.classList.toggle('active');
+    }
+    
+    /**
+     * Chat 사이드바 닫기
+     */
+    closeChatSidebar() {
+        const sidebar = document.getElementById('chatSidebar');
+        const overlay = document.getElementById('sidebarOverlay');
+        
+        sidebar.classList.remove('open');
+        overlay.classList.remove('active');
+    }
+    
+    /**
+     * 초기 포커스 설정
+     */
+    setInitialFocus() {
+        // 현재 상태에 따라 적절한 입력창에 포커스
+        setTimeout(() => {
+            if (this.currentState === 'welcome') {
+                const welcomeInput = document.getElementById('welcomeMessageInput');
+                if (welcomeInput) welcomeInput.focus();
+            } else {
+                const chatInput = document.getElementById('chatMessageInput');
+                if (chatInput) chatInput.focus();
+            }
+        }, 100);
+    }
+    
+    /**
+     * 새 대화 시작 (Chat Interface용)
+     */
+    async startNewConversation() {
+        try {
+            // 기존 대화 종료 API 호출
+            await fetch('/api/conversation/clear', { method: 'POST' });
+            
+            // Chat 메시지 영역 초기화
+            const chatMessages = document.getElementById('chatMessages');
+            chatMessages.innerHTML = '';
+            
+            // 현재 대화 ID 초기화
+            this.currentConversationId = null;
+            
+            // 입력창 초기화 및 포커스
+            const chatInput = document.getElementById('chatMessageInput');
+            chatInput.value = '';
+            chatInput.focus();
+            
+            // 모바일에서 사이드바 닫기
+            this.closeChatSidebar();
+            
+            this.showNotification('새 대화를 시작했습니다.', 'success');
+            
+        } catch (error) {
+            console.error('새 대화 시작 오류:', error);
+            this.showNotification('새 대화 시작 중 오류가 발생했습니다.', 'error');
+        }
+    }
+    
+    /**
+     * 메시지 전송 (오버라이드)
+     */
+    async sendMessage(customMessage = null) {
+        // 현재 상태에 따라 적절한 입력창에서 메시지 가져오기
+        let message;
+        let inputElement;
+        
+        if (customMessage) {
+            message = customMessage;
+        } else if (this.currentState === 'welcome') {
+            inputElement = document.getElementById('welcomeMessageInput');
+            message = inputElement.value.trim();
+        } else {
+            inputElement = document.getElementById('chatMessageInput');
+            message = inputElement.value.trim();
+        }
+        
+        if (!message || this.isLoading) return;
+        
+        this.isLoading = true;
+        this.setLoadingState(true);
+        
+        try {
+            // Chat 모드가 아니면 전환
+            if (this.currentState !== 'chat') {
+                this.setState('chat');
+            }
+            
+            // UI에 사용자 메시지 표시
+            this.displayUserMessage(message);
+            
+            // 입력창 초기화
+            if (inputElement) {
+                inputElement.value = '';
+                if (inputElement.style) {
+                    inputElement.style.height = 'auto';
+                }
+            }
+            
+            // API 요청
+            const response = await fetch('/api/chat', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    message: message,
+                    model: this.selectedModel,
+                    search_scope: this.userSettings.search_scope
+                })
+            });
+            
+            this.hideTypingIndicator();
+            
+            if (response.ok) {
+                const data = await response.json();
+                this.displayAssistantMessage(
+                    data.response, 
+                    data.citations || [], 
+                    data.timestamp, 
+                    true,
+                    data.question_type, 
+                    data.model_used,
+                    data.source_filtering
+                );
+            } else {
+                const errorData = await response.json();
+                this.displayErrorMessage(errorData.error || '오류가 발생했습니다.');
+            }
+            
+        } catch (error) {
+            console.error('메시지 전송 실패:', error);
+            this.hideTypingIndicator();
+            this.displayErrorMessage('네트워크 오류가 발생했습니다.');
+        } finally {
+            this.isLoading = false;
+            this.setLoadingState(false);
+        }
+    }
+    
+    /**
+     * 사용자 메시지 표시 (Chat Interface용)
+     */
+    displayUserMessage(message, timestamp = null, scroll = true, questionType = null) {
+        const chatMessages = document.getElementById('chatMessages');
+        const messageTime = timestamp ? new Date(timestamp) : new Date();
+        
+        const messageElement = document.createElement('div');
+        messageElement.className = 'message user-message';
+        
+        messageElement.innerHTML = `
+            <div class="message-content">
+                ${this.escapeHtml(message)}
+            </div>
+        `;
+        
+        chatMessages.appendChild(messageElement);
+        
+        if (scroll) {
+            this.scrollToBottom();
+        }
+    }
+    
+    /**
+     * AI 응답 메시지 표시 (Chat Interface용)
+     */
+    displayAssistantMessage(message, citations = [], timestamp = null, scroll = true, questionType = null, modelUsed = null, sourceFiltering = null) {
+        const chatMessages = document.getElementById('chatMessages');
+        const messageTime = timestamp ? new Date(timestamp) : new Date();
+        
+        const messageElement = document.createElement('div');
+        messageElement.className = 'message assistant-message';
+        
+        let citationsHtml = '';
+        if (citations && citations.length > 0) {
+            const citationLinks = citations.map(citation => 
+                `<a href="${citation}" target="_blank" class="citation-link" title="${citation}">
+                    <i class="fas fa-external-link-alt me-1"></i>
+                    ${this.getDomainFromUrl(citation)}
+                </a>`
+            ).join('');
+            
+            // 소스 필터링 정보 표시
+            let filteringInfo = '';
+            if (sourceFiltering && sourceFiltering.filtered_count > 0) {
+                filteringInfo = `
+                    <div class="filtering-info">
+                        <small class="text-muted">
+                            <i class="fas fa-filter me-1"></i>
+                            ${sourceFiltering.total_sources}개 소스 중 ${sourceFiltering.filtered_sources}개 선별
+                            (${sourceFiltering.filtered_count}개 관련성 낮은 소스 제외)
+                        </small>
+                    </div>
+                `;
+            }
+            
+            citationsHtml = `
+                <div class="citations">
+                    <h6><i class="fas fa-link me-1"></i>참고 자료 (${citations.length}개)</h6>
+                    ${filteringInfo}
+                    ${citationLinks}
+                </div>
+            `;
+        }
+        
+        messageElement.innerHTML = `
+            <div class="assistant-avatar">
+                <i class="fas fa-robot"></i>
+            </div>
+            <div class="message-content">
+                ${this.formatMessage(message)}
+                ${citationsHtml}
+            </div>
+        `;
+        
+        chatMessages.appendChild(messageElement);
+        
+        if (scroll) {
+            this.scrollToBottom();
+        }
+    }
+    
+    /**
+     * 에러 메시지 표시 (Chat Interface용)
+     */
+    displayErrorMessage(errorMessage) {
+        const chatMessages = document.getElementById('chatMessages');
+        
+        const messageElement = document.createElement('div');
+        messageElement.className = 'message assistant-message error-message';
+        
+        messageElement.innerHTML = `
+            <div class="assistant-avatar">
+                <i class="fas fa-exclamation-triangle"></i>
+            </div>
+            <div class="message-content">
+                <div class="error-content">
+                    <i class="fas fa-exclamation-circle me-2"></i>
+                    ${this.escapeHtml(errorMessage)}
+                </div>
+            </div>
+        `;
+        
+        chatMessages.appendChild(messageElement);
+        this.scrollToBottom();
+    }
+    
+    /**
+     * 타이핑 인디케이터 표시
+     */
+    showTypingIndicator() {
+        const indicator = document.getElementById('typingIndicator');
+        if (indicator) {
+            indicator.style.display = 'flex';
+        }
+    }
+    
+    /**
+     * 타이핑 인디케이터 숨기기
+     */
+    hideTypingIndicator() {
+        const indicator = document.getElementById('typingIndicator');
+        if (indicator) {
+            indicator.style.display = 'none';
+        }
+    }
+    
+    /**
+     * 로딩 상태 설정
+     */
+    setLoadingState(loading) {
+        if (loading) {
+            this.showTypingIndicator();
+        } else {
+            this.hideTypingIndicator();
+        }
+        
+        // 전송 버튼들 비활성화/활성화
+        const welcomeBtn = document.getElementById('welcomeSubmitBtn');
+        const chatBtn = document.getElementById('chatSendBtn');
+        
+        if (welcomeBtn) welcomeBtn.disabled = loading;
+        if (chatBtn) chatBtn.disabled = loading;
+    }
+    
+    /**
+     * 채팅 영역 하단으로 스크롤
+     */
+    scrollToBottom() {
+        const chatMessages = document.getElementById('chatMessages');
+        if (chatMessages) {
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        }
+    }
+    
+    /**
+     * 사용자 인사말 업데이트
+     */
+    updateUserGreeting() {
+        const chatUserName = document.getElementById('chatUserName');
+        if (chatUserName) {
+            chatUserName.textContent = this.userSettings.user_name || '사용자';
         }
     }
     

@@ -8,11 +8,12 @@ This is a Flask-based web application that provides an AI-powered search interfa
 
 ### Frontend Architecture
 - **Technology**: Vanilla JavaScript with Bootstrap 5 for responsive UI
-- **Structure**: Single-page application (SPA) with dynamic content loading
+- **Structure**: Two-state single-page application (Welcome Screen + Chat Interface)
 - **Components**: 
-  - Chat interface with message history
-  - Sidebar for user settings and preferences
-  - Theme toggle system (light/dark mode)
+  - Welcome Screen with centered search and model selection
+  - Chat Interface with sidebar history and message bubbles
+  - Header navigation with logo/home button and theme toggle
+  - Suggestion cards and search mode options
   - Responsive design for mobile and desktop
 
 ### Backend Architecture
@@ -22,10 +23,12 @@ This is a Flask-based web application that provides an AI-powered search interfa
 - **Deployment**: Gunicorn WSGI server with autoscale deployment target
 
 ### Key Design Decisions
+- **Two-State UI Architecture**: Welcome Screen for initial interaction, Chat Interface for ongoing conversations
+- **Modern AI UX Patterns**: Following ChatGPT/Claude design principles for familiar user experience
 - **Database-Driven Architecture**: PostgreSQL for persistent storage of users, conversations, and messages
 - **Intelligent Question Classification**: Automatic categorization of user queries (greeting, realtime, learning, info_search, general) for optimized responses
 - **Multi-Model AI Support**: Users can select from multiple Perplexity AI models optimized for different tasks
-- **Client-Side State Management**: JavaScript handles UI state, settings persistence, and dynamic interactions
+- **State-Based Navigation**: Seamless transitions between welcome and chat modes with proper state management
 - **External AI Service**: Integrated Perplexity AI instead of building custom AI models for faster time-to-market
 
 ## Key Components
@@ -125,6 +128,7 @@ Changelog:
 - June 22, 2025. Added model recommendation system based on question type and content analysis
 - June 22, 2025. Implemented sophisticated source filtering and relevance verification system
 - June 22, 2025. Redesigned UI with modern AI interface similar to ChatGPT/Claude with clean layout and improved UX
+- June 22, 2025. Implemented two-state UI system: Welcome Screen (initial landing) and Chat Interface (conversation mode)
 ```
 
 ## User Preferences
