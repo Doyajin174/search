@@ -892,7 +892,9 @@ class PPLXChatApp {
                     true,
                     data.question_type, 
                     data.model_used,
-                    data.source_filtering
+                    data.source_filtering,
+                    data.quality_score,
+                    data.retry_count || 0
                 );
             } else {
                 const errorData = await response.json();
@@ -935,7 +937,7 @@ class PPLXChatApp {
     /**
      * AI 응답 메시지 표시
      */
-    displayAssistantMessage(message, citations = [], timestamp = null, scroll = true, questionType = null, modelUsed = null, sourceFiltering = null) {
+    displayAssistantMessage(message, citations = [], timestamp = null, scroll = true, questionType = null, modelUsed = null, sourceFiltering = null, qualityScore = null, retryCount = 0) {
         const chatMessages = document.getElementById('chatMessages');
         if (!chatMessages) return;
         
@@ -974,6 +976,36 @@ class PPLXChatApp {
             `;
         }
         
+        // 품질 점수 표시 HTML 생성
+        let qualityHtml = '';
+        if (qualityScore && qualityScore.total_score) {
+            const scoreColor = qualityScore.total_score >= 80 ? 'success' : 
+                             qualityScore.total_score >= 60 ? 'warning' : 'danger';
+            const retryText = retryCount > 0 ? ` (${retryCount}회 재시도)` : '';
+            
+            qualityHtml = `
+                <div class="quality-indicator">
+                    <small class="text-muted quality-score">
+                        <i class="fas fa-chart-line me-1"></i>
+                        답변 품질: <span class="badge bg-${scoreColor}">${qualityScore.total_score}점</span>${retryText}
+                        <button class="btn btn-link btn-sm quality-details-btn" type="button" data-bs-toggle="collapse" data-bs-target="#quality-${Date.now()}" aria-expanded="false">
+                            <i class="fas fa-info-circle"></i>
+                        </button>
+                    </small>
+                    <div class="collapse quality-details" id="quality-${Date.now()}">
+                        <div class="card card-body">
+                            <small>
+                                길이: ${qualityScore.length_score}/25, 
+                                구조: ${qualityScore.structure_score}/25, 
+                                참고자료: ${qualityScore.citation_score}/25, 
+                                내용: ${qualityScore.content_score}/25
+                            </small>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
         messageElement.innerHTML = `
             <div class="assistant-avatar">
                 <i class="fas fa-robot"></i>
@@ -981,6 +1013,7 @@ class PPLXChatApp {
             <div class="message-content">
                 ${this.formatMessage(message)}
                 ${citationsHtml}
+                ${qualityHtml}
             </div>
         `;
         

@@ -559,6 +559,54 @@
     font-size: 14px;
 }
 
+/* 품질 지표 스타일 */
+.quality-indicator {
+    margin-top: 8px;
+    padding-top: 8px;
+    border-top: 1px solid #565869;
+}
+
+.quality-score {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.quality-details-btn {
+    padding: 0;
+    border: none;
+    color: #8e8ea0;
+    font-size: 12px;
+}
+
+.quality-details-btn:hover {
+    color: #ffffff;
+}
+
+.quality-details .card {
+    background: #2a2b32;
+    border: 1px solid #565869;
+    margin-top: 8px;
+}
+
+.quality-details .card-body {
+    padding: 8px 12px;
+    color: #8e8ea0;
+}
+
+.badge.bg-success {
+    background-color: #28a745 !important;
+}
+
+.badge.bg-warning {
+    background-color: #ffc107 !important;
+    color: #000 !important;
+}
+
+.badge.bg-danger {
+    background-color: #dc3545 !important;
+}
+
 /* 타이핑 인디케이터 */
 .typing-indicator {
     padding: 16px 20px;

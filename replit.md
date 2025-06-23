@@ -38,7 +38,8 @@ This is a Flask-based web application that provides an AI-powered search interfa
 
 ### Backend Components (`app.py`)
 - **Main Route (`/`)**: Serves the main chat interface
-- **Chat API (`/api/chat`)**: Handles communication with Perplexity AI with intelligent question classification
+- **Chat API (`/api/chat`)**: Handles communication with Perplexity AI with intelligent question classification and quality enhancement
+- **Quality Enhancement System**: Automatic response quality evaluation, retry mechanism (up to 3 attempts), and quality scoring
 - **Model Management**: Dynamic AI model selection and recommendation system
 - **Source Filtering (`source_filter.py`)**: Advanced relevance verification and quality filtering for search results
 - **Conversation CRUD**: Full conversation history management with database persistence
@@ -135,6 +136,9 @@ Changelog:
 - June 23, 2025. Successfully migrated project from Replit Agent to standard Replit environment
 - June 23, 2025. Configured PostgreSQL database connection and environment variables
 - June 23, 2025. Removed suggestion cards from welcome screen for cleaner interface
+- June 23, 2025. Implemented ChatGPT-style complete sidebar layout with persistent conversation history
+- June 23, 2025. Added automatic new conversation creation from welcome screen
+- June 23, 2025. Implemented comprehensive PPLX API response quality improvement system with automatic retry, quality scoring, and monitoring
 ```
 
 ## User Preferences

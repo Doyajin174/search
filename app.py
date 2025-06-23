@@ -516,8 +516,26 @@ def chat():
         # 검색이 필요한 경우 Perplexity API 호출
         messages = []
         
-        # 질문 유형에 맞는 시스템 메시지 구성
-        system_content = f"당신은 {user_name}님을 위한 AI 검색 어시스턴트입니다. {response_config['prompt_prefix']}."
+        # 품질 개선된 시스템 메시지 구성
+        if response_config.get("use_search", True):
+            system_content = f"""당신은 전문적인 AI 검색 어시스턴트입니다. {response_config.get('prompt_prefix', '다음 질문에 대해 도움이 되는 답변을 제공해주세요')}.
+
+다음 품질 기준을 준수해주세요:
+1. 최소 300자 이상의 상세한 답변 제공
+2. 명확한 구조로 2-3개 섹션 구성 (예: 정의, 상세 설명, 요약/결론)
+3. 제공된 참고자료를 다양하게 활용하여 신뢰성 확보
+4. 구체적인 예시나 세부사항 포함
+5. 마크다운 포맷으로 가독성 향상 (**, ##, - 등 활용)
+
+답변은 정확하고 포괄적이며 사용자에게 실질적인 도움이 되도록 작성해주세요."""
+        else:
+            system_content = f"""당신은 친근하고 전문적인 AI 어시스턴트입니다. 사용자와 자연스럽게 대화하되, 다음을 준수해주세요:
+
+1. 충분히 상세하고 도움이 되는 답변 제공
+2. 명확하고 구조화된 형태로 답변 구성
+3. 구체적인 예시나 설명 포함
+
+사용자에게 최고 품질의 대화 경험을 제공해주세요."""
         
         messages.append({
             "role": "system",
@@ -569,8 +587,9 @@ def chat():
         payload = {
             "model": selected_model,
             "messages": messages,
-            "temperature": 0.2,
+            "temperature": 0.2,  # 일관성 향상
             "top_p": 0.9,
+            "max_tokens": 2000,  # 충분한 답변 길이
             "return_images": False,
             "return_related_questions": False,
             "stream": False,
@@ -593,6 +612,33 @@ def chat():
         # AI 응답 추출
         ai_content = api_response['choices'][0]['message']['content']
         citations = api_response.get('citations', [])
+        
+        # 답변 품질 검증
+        quality_score = evaluate_response_quality(ai_content, citations, question_type)
+        logging.info(f"답변 품질 점수: {quality_score['total_score']}/100")
+        
+        # 품질 기준 미달 시 재시도 (최대 2회 추가)
+        retry_count = 0
+        max_retries = 2
+        
+        while quality_score['total_score'] < 70 and retry_count < max_retries:
+            retry_count += 1
+            logging.warning(f"품질 기준 미달 (점수: {quality_score['total_score']}), 재시도 {retry_count}/{max_retries}")
+            
+            # 질문을 더 구체적으로 재구성
+            enhanced_message = enhance_question_for_retry(user_message, question_type, retry_count)
+            messages[-1]['content'] = enhanced_message
+            
+            # 재요청
+            retry_response = requests.post(PERPLEXITY_API_URL, headers=headers, json=payload, timeout=30)
+            if retry_response.status_code == 200:
+                api_response = retry_response.json()
+                ai_content = api_response['choices'][0]['message']['content']
+                citations = api_response.get('citations', [])
+                quality_score = evaluate_response_quality(ai_content, citations, question_type)
+                logging.info(f"재시도 후 품질 점수: {quality_score['total_score']}/100")
+            else:
+                break
         
         # 출처 필터링 (관련성 높은 출처만 선별)
         max_sources = response_config.get("max_sources", 4)
@@ -629,12 +675,14 @@ def chat():
             'timestamp': user_message_obj.created_at.isoformat(),
             'question_type': question_type,
             'model_used': selected_model,
+            'quality_score': quality_score,
+            'retry_count': retry_count,
             'source_filtering': {
-                'total_sources': filter_stats.get('total_count', 0),
+                'total_sources': len(api_response.get('citations', [])),
                 'filtered_sources': len(citations),
-                'filtered_count': filter_stats.get('filtered_count', 0),
-                'filter_description': filter_stats.get('filter_rules', '')
-            } if 'filter_stats' in locals() else None
+                'filtered_count': max(0, len(api_response.get('citations', [])) - len(citations)),
+                'filter_description': f'관련성 기반 필터링 (최대 {max_sources}개 소스)'
+            }
         })
         
     except requests.exceptions.RequestException as e:
@@ -646,6 +694,94 @@ def chat():
     except Exception as e:
         logging.error(f"예상치 못한 오류: {str(e)}")
         return jsonify({'error': '서버 오류가 발생했습니다. 잠시 후 다시 시도해주세요.'}), 500
+
+def evaluate_response_quality(response, citations, question_type):
+    """답변 품질을 평가하는 함수"""
+    score = {
+        'length_score': 0,
+        'structure_score': 0,
+        'citation_score': 0,
+        'content_score': 0,
+        'total_score': 0
+    }
+    
+    # 1. 길이 점수 (25점 만점)
+    response_length = len(response)
+    if response_length >= 300:
+        score['length_score'] = 25
+    elif response_length >= 200:
+        score['length_score'] = 20
+    elif response_length >= 100:
+        score['length_score'] = 15
+    else:
+        score['length_score'] = 10
+    
+    # 2. 구조 점수 (25점 만점)
+    structure_indicators = [
+        '**' in response,  # 볼드 텍스트
+        '##' in response,  # 헤딩
+        '\n-' in response or '\n•' in response,  # 리스트
+        response.count('\n\n') >= 1,  # 단락 구분
+        ':' in response  # 설명 구조
+    ]
+    score['structure_score'] = min(25, sum(structure_indicators) * 5)
+    
+    # 3. 참고자료 점수 (25점 만점)
+    citation_count = len(citations) if citations else 0
+    if citation_count >= 3:
+        score['citation_score'] = 25
+    elif citation_count >= 2:
+        score['citation_score'] = 20
+    elif citation_count >= 1:
+        score['citation_score'] = 15
+    else:
+        score['citation_score'] = 5 if question_type == 'greeting' else 0
+    
+    # 4. 콘텐츠 품질 점수 (25점 만점)
+    content_indicators = [
+        '예시' in response or '예를 들어' in response,  # 예시 포함
+        '요약' in response or '결론' in response,  # 결론 포함
+        len(response.split('.')) >= 3,  # 충분한 문장 수
+        any(keyword in response for keyword in ['정의', '의미', '특징', '방법', '종류']),  # 체계적 설명
+        response.count('다음') >= 1 or response.count('이러한') >= 1  # 연결성
+    ]
+    score['content_score'] = min(25, sum(content_indicators) * 5)
+    
+    # 총점 계산
+    score['total_score'] = sum([
+        score['length_score'],
+        score['structure_score'], 
+        score['citation_score'],
+        score['content_score']
+    ])
+    
+    return score
+
+def enhance_question_for_retry(original_question, question_type, retry_count):
+    """재시도를 위해 질문을 더 구체적으로 개선"""
+    enhancement_templates = {
+        'general': [
+            f"{original_question}에 대해 상세하고 구체적인 설명을 제공해주세요. 정의, 특징, 예시를 포함해주세요.",
+            f"{original_question}의 모든 측면에 대해 포괄적으로 설명해주세요. 배경, 현황, 의미 등을 다각도로 분석해주세요."
+        ],
+        'info_search': [
+            f"{original_question}에 대한 최신 정보와 다양한 관점을 제시해주세요. 여러 출처의 정보를 종합하여 설명해주세요.",
+            f"{original_question}의 전문적이고 상세한 분석을 제공해주세요. 관련 데이터와 사실들을 포함해주세요."
+        ],
+        'learning': [
+            f"{original_question}에 대해 단계별로 자세히 설명해주세요. 기초부터 심화까지 체계적으로 학습할 수 있도록 구성해주세요.",
+            f"{original_question}의 개념, 원리, 적용 방법을 구체적인 예시와 함께 상세히 설명해주세요."
+        ],
+        'realtime': [
+            f"{original_question}의 최신 동향과 현재 상황을 자세히 분석해주세요. 관련 뉴스와 데이터를 포함해주세요.",
+            f"{original_question}에 대한 실시간 정보와 트렌드를 종합적으로 제시해주세요."
+        ]
+    }
+    
+    templates = enhancement_templates.get(question_type, enhancement_templates['general'])
+    template_index = min(retry_count - 1, len(templates) - 1)
+    
+    return templates[template_index]
 
 @app.route('/api/conversation', methods=['GET'])
 def get_current_conversation():
