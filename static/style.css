@@ -47,6 +47,330 @@
     --shadow-heavy: 0 8px 25px rgba(0, 0, 0, 0.5);
 }
 
+/* ===== 검색 이력 사이드바 스타일 ===== */
+.history-search {
+    padding: 1rem;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.search-input-wrapper {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+.search-icon {
+    position: absolute;
+    left: 12px;
+    color: var(--text-muted);
+    font-size: 14px;
+    z-index: 1;
+}
+
+#historySearchInput {
+    width: 100%;
+    padding: 10px 12px 10px 36px;
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius-sm);
+    background-color: var(--bg-secondary);
+    color: var(--text-primary);
+    font-size: 14px;
+    transition: all var(--transition-fast);
+}
+
+#historySearchInput:focus {
+    outline: none;
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
+.search-clear-btn {
+    position: absolute;
+    right: 8px;
+    background: none;
+    border: none;
+    color: var(--text-muted);
+    cursor: pointer;
+    padding: 4px;
+    border-radius: 4px;
+    transition: all var(--transition-fast);
+}
+
+.search-clear-btn:hover {
+    background-color: var(--bg-tertiary);
+    color: var(--text-secondary);
+}
+
+.history-loading {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 2rem 1rem;
+    color: var(--text-muted);
+    font-size: 14px;
+}
+
+.loading-spinner {
+    width: 24px;
+    height: 24px;
+    border: 2px solid var(--border-color);
+    border-top: 2px solid var(--primary-color);
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin-bottom: 12px;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+.history-empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 3rem 1rem;
+    text-align: center;
+}
+
+.empty-icon {
+    font-size: 48px;
+    color: var(--text-muted);
+    margin-bottom: 16px;
+    opacity: 0.6;
+}
+
+.empty-text {
+    font-size: 16px;
+    font-weight: 500;
+    color: var(--text-secondary);
+    margin-bottom: 8px;
+}
+
+.empty-subtitle {
+    font-size: 14px;
+    color: var(--text-muted);
+}
+
+.history-section {
+    margin-bottom: 1rem;
+}
+
+.history-section-header {
+    display: flex;
+    align-items: center;
+    padding: 12px 1rem 8px;
+    gap: 8px;
+}
+
+.section-icon {
+    font-size: 14px;
+    color: var(--text-muted);
+    width: 16px;
+}
+
+.history-title {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    flex: 1;
+}
+
+.section-count {
+    font-size: 11px;
+    color: var(--text-muted);
+    background-color: var(--bg-tertiary);
+    padding: 2px 6px;
+    border-radius: 10px;
+    min-width: 20px;
+    text-align: center;
+}
+
+.history-list {
+    padding: 0 0.5rem;
+}
+
+.history-item {
+    display: flex;
+    align-items: center;
+    padding: 8px 12px;
+    margin-bottom: 2px;
+    border-radius: var(--border-radius-sm);
+    cursor: pointer;
+    transition: all var(--transition-fast);
+    position: relative;
+    group: history-item;
+}
+
+.history-item:hover {
+    background-color: var(--bg-secondary);
+}
+
+.history-item.active {
+    background-color: var(--primary-color);
+    color: white;
+}
+
+.history-item.active .conversation-title,
+.history-item.active .conversation-preview,
+.history-item.active .conversation-time {
+    color: white;
+}
+
+.conversation-content {
+    flex: 1;
+    min-width: 0;
+    margin-right: 8px;
+}
+
+.conversation-title {
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--text-primary);
+    margin-bottom: 2px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.conversation-preview {
+    font-size: 12px;
+    color: var(--text-muted);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.conversation-time {
+    font-size: 11px;
+    color: var(--text-muted);
+    white-space: nowrap;
+}
+
+.conversation-actions {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    opacity: 0;
+    transition: opacity var(--transition-fast);
+}
+
+.history-item:hover .conversation-actions {
+    opacity: 1;
+}
+
+.conversation-action-btn {
+    background: none;
+    border: none;
+    color: var(--text-muted);
+    cursor: pointer;
+    padding: 4px;
+    border-radius: 4px;
+    font-size: 12px;
+    transition: all var(--transition-fast);
+}
+
+.conversation-action-btn:hover {
+    background-color: var(--bg-tertiary);
+    color: var(--text-secondary);
+}
+
+.conversation-action-btn.favorite.active {
+    color: #fbbf24;
+}
+
+.history-item.active .conversation-action-btn {
+    color: rgba(255, 255, 255, 0.8);
+}
+
+.history-item.active .conversation-action-btn:hover {
+    background-color: rgba(255, 255, 255, 0.1);
+    color: white;
+}
+
+.load-more-section {
+    padding: 1rem;
+    text-align: center;
+}
+
+.load-more-btn {
+    background: none;
+    border: 1px solid var(--border-color);
+    color: var(--text-secondary);
+    padding: 10px 16px;
+    border-radius: var(--border-radius-sm);
+    cursor: pointer;
+    font-size: 14px;
+    transition: all var(--transition-fast);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 0 auto;
+}
+
+.load-more-btn:hover {
+    background-color: var(--bg-secondary);
+    border-color: var(--primary-color);
+    color: var(--primary-color);
+}
+
+.load-more-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+/* 검색 결과 하이라이트 */
+.search-highlight {
+    background-color: #fef3c7;
+    color: #92400e;
+    padding: 0 2px;
+    border-radius: 2px;
+}
+
+[data-theme="dark"] .search-highlight {
+    background-color: #451a03;
+    color: #fbbf24;
+}
+
+/* 모바일 반응형 */
+@media (max-width: 768px) {
+    .chat-sidebar {
+        position: fixed;
+        left: -100%;
+        top: var(--header-height);
+        height: calc(100vh - var(--header-height));
+        z-index: 1001;
+        transition: left var(--transition-normal);
+        box-shadow: var(--shadow-heavy);
+    }
+    
+    .chat-sidebar.mobile-open {
+        left: 0;
+    }
+    
+    .sidebar-overlay {
+        position: fixed;
+        top: var(--header-height);
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background-color: rgba(0, 0, 0, 0.5);
+        z-index: 1000;
+        opacity: 0;
+        visibility: hidden;
+        transition: all var(--transition-normal);
+    }
+    
+    .sidebar-overlay.active {
+        opacity: 1;
+        visibility: visible;
+    }
+}
+
 /* ===== 기본 스타일 ===== */
 * {
     box-sizing: border-box;

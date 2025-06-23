@@ -234,6 +234,189 @@ def index():
     user = get_or_create_user()
     return render_template('index.html')
 
+@app.route('/api/conversations', methods=['GET'])
+def get_conversations():
+    """사용자의 대화 목록 조회"""
+    try:
+        user = get_or_create_user()
+        
+        # 페이지네이션 파라미터
+        page = request.args.get('page', 1, type=int)
+        per_page = request.args.get('per_page', 50, type=int)
+        search_query = request.args.get('search', '').strip()
+        
+        # 기본 쿼리
+        query = Conversation.query.filter_by(user_id=user.id)
+        
+        # 검색 필터
+        if search_query:
+            query = query.filter(
+                db.or_(
+                    Conversation.title.ilike(f'%{search_query}%'),
+                    Conversation.id.in_(
+                        db.session.query(Message.conversation_id)
+                        .filter(Message.content.ilike(f'%{search_query}%'))
+                        .distinct()
+                    )
+                )
+            )
+        
+        # 정렬 및 페이지네이션
+        conversations = query.order_by(Conversation.updated_at.desc()).paginate(
+            page=page, per_page=per_page, error_out=False
+        )
+        
+        # 날짜별 그룹핑을 위한 데이터 변환
+        grouped_conversations = group_conversations_by_date([conv.to_dict() for conv in conversations.items])
+        
+        return jsonify({
+            'conversations': grouped_conversations,
+            'pagination': {
+                'page': conversations.page,
+                'pages': conversations.pages,
+                'per_page': conversations.per_page,
+                'total': conversations.total,
+                'has_next': conversations.has_next,
+                'has_prev': conversations.has_prev
+            }
+        })
+        
+    except Exception as e:
+        logging.error(f"대화 목록 조회 실패: {e}")
+        return jsonify({'error': '대화 목록을 불러올 수 없습니다.'}), 500
+
+@app.route('/api/conversations/<conversation_id>', methods=['GET'])
+def get_conversation(conversation_id):
+    """특정 대화의 상세 내용 조회"""
+    try:
+        user = get_or_create_user()
+        conversation = Conversation.query.filter_by(
+            id=conversation_id, 
+            user_id=user.id
+        ).first()
+        
+        if not conversation:
+            return jsonify({'error': '대화를 찾을 수 없습니다.'}), 404
+        
+        # 메시지 목록 포함
+        messages = Message.query.filter_by(
+            conversation_id=conversation_id
+        ).order_by(Message.created_at.asc()).all()
+        
+        return jsonify({
+            'conversation': conversation.to_dict(),
+            'messages': [msg.to_dict() for msg in messages]
+        })
+        
+    except Exception as e:
+        logging.error(f"대화 조회 실패: {e}")
+        return jsonify({'error': '대화를 불러올 수 없습니다.'}), 500
+
+@app.route('/api/conversations/<conversation_id>', methods=['DELETE'])
+def delete_conversation(conversation_id):
+    """대화 삭제"""
+    try:
+        user = get_or_create_user()
+        conversation = Conversation.query.filter_by(
+            id=conversation_id, 
+            user_id=user.id
+        ).first()
+        
+        if not conversation:
+            return jsonify({'error': '대화를 찾을 수 없습니다.'}), 404
+        
+        # 관련 메시지도 함께 삭제 (CASCADE로 자동 처리됨)
+        db.session.delete(conversation)
+        db.session.commit()
+        
+        return jsonify({'message': '대화가 삭제되었습니다.'})
+        
+    except Exception as e:
+        logging.error(f"대화 삭제 실패: {e}")
+        return jsonify({'error': '대화를 삭제할 수 없습니다.'}), 500
+
+@app.route('/api/conversations/<conversation_id>/favorite', methods=['POST'])
+def toggle_favorite(conversation_id):
+    """대화 즐겨찾기 토글"""
+    try:
+        user = get_or_create_user()
+        conversation = Conversation.query.filter_by(
+            id=conversation_id, 
+            user_id=user.id
+        ).first()
+        
+        if not conversation:
+            return jsonify({'error': '대화를 찾을 수 없습니다.'}), 404
+        
+        conversation.is_favorite = not conversation.is_favorite
+        db.session.commit()
+        
+        return jsonify({
+            'message': '즐겨찾기가 업데이트되었습니다.',
+            'is_favorite': conversation.is_favorite
+        })
+        
+    except Exception as e:
+        logging.error(f"즐겨찾기 토글 실패: {e}")
+        return jsonify({'error': '즐겨찾기를 업데이트할 수 없습니다.'}), 500
+
+@app.route('/api/conversations/new', methods=['POST'])
+def create_new_conversation():
+    """새 대화 생성"""
+    try:
+        user = get_or_create_user()
+        data = request.get_json()
+        title = data.get('title', '새 대화')
+        
+        conversation = Conversation(user_id=user.id, title=title)
+        db.session.add(conversation)
+        db.session.commit()
+        
+        # 세션에 새 대화 ID 저장
+        session['conversation_id'] = conversation.id
+        
+        return jsonify({
+            'conversation': conversation.to_dict(),
+            'message': '새 대화가 생성되었습니다.'
+        })
+        
+    except Exception as e:
+        logging.error(f"대화 생성 실패: {e}")
+        return jsonify({'error': '새 대화를 생성할 수 없습니다.'}), 500
+
+def group_conversations_by_date(conversations):
+    """대화를 날짜별로 그룹핑"""
+    from datetime import datetime, timedelta
+    
+    now = datetime.utcnow()
+    today = now.date()
+    yesterday = today - timedelta(days=1)
+    week_ago = today - timedelta(days=7)
+    
+    grouped = {
+        'favorites': [],
+        'today': [],
+        'yesterday': [],
+        'this_week': [],
+        'older': []
+    }
+    
+    for conv in conversations:
+        conv_date = datetime.fromisoformat(conv['updated_at'].replace('Z', '+00:00')).date()
+        
+        if conv.get('is_favorite'):
+            grouped['favorites'].append(conv)
+        elif conv_date == today:
+            grouped['today'].append(conv)
+        elif conv_date == yesterday:
+            grouped['yesterday'].append(conv)
+        elif conv_date >= week_ago:
+            grouped['this_week'].append(conv)
+        else:
+            grouped['older'].append(conv)
+    
+    return grouped
+
 @app.route('/api/chat', methods=['POST'])
 def chat():
     """채팅 API 엔드포인트 - 질문 유형별 맞춤 응답 제공"""
@@ -442,7 +625,7 @@ def chat():
         return jsonify({'error': '서버 오류가 발생했습니다. 잠시 후 다시 시도해주세요.'}), 500
 
 @app.route('/api/conversation', methods=['GET'])
-def get_conversation():
+def get_current_conversation():
     """현재 대화의 메시지 기록 반환"""
     try:
         user = get_or_create_user()
@@ -554,40 +737,6 @@ def get_settings():
             'preferred_model': DEFAULT_MODEL
         })
 
-@app.route('/api/conversations', methods=['GET'])
-def get_conversations():
-    """사용자의 모든 대화 목록 반환"""
-    try:
-        user = get_or_create_user()
-        
-        # 사용자의 모든 대화 가져오기 (최신순)
-        conversations = Conversation.query.filter_by(
-            user_id=user.id
-        ).order_by(Conversation.updated_at.desc()).limit(50).all()
-        
-        conversation_list = []
-        for conv in conversations:
-            # 각 대화의 첫 번째 메시지와 마지막 메시지 시간 가져오기
-            first_message = Message.query.filter_by(
-                conversation_id=conv.id
-            ).order_by(Message.created_at).first()
-            
-            conversation_data = {
-                'id': conv.id,
-                'title': conv.title or (first_message.content[:30] + '...' if first_message and len(first_message.content) > 30 else first_message.content if first_message else '새 대화'),
-                'created_at': conv.created_at.isoformat(),
-                'updated_at': conv.updated_at.isoformat(),
-                'is_active': conv.is_active,
-                'message_count': len(conv.messages)
-            }
-            conversation_list.append(conversation_data)
-        
-        return jsonify({'conversations': conversation_list})
-        
-    except Exception as e:
-        logging.error(f"대화 목록 조회 오류: {str(e)}")
-        return jsonify({'conversations': []})
-
 @app.route('/api/conversation/<conversation_id>', methods=['GET'])
 def get_specific_conversation(conversation_id):
     """특정 대화의 메시지 기록 반환"""
@@ -644,7 +793,7 @@ def get_specific_conversation(conversation_id):
         return jsonify({'error': '대화 조회 중 오류가 발생했습니다.'}), 500
 
 @app.route('/api/conversation/<conversation_id>', methods=['DELETE'])
-def delete_conversation(conversation_id):
+def delete_specific_conversation(conversation_id):
     """특정 대화 삭제"""
     try:
         user = get_or_create_user()

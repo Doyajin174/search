@@ -17,6 +17,14 @@ class PPLXChatApp {
         this.currentState = 'welcome'; // 'welcome' | 'chat'
         this.currentConversationId = null;
         this.conversationHistory = [];
+        this.searchHistory = {
+            conversations: [],
+            currentPage: 1,
+            totalPages: 1,
+            isLoading: false,
+            searchQuery: '',
+            searchTimeout: null
+        };
     }
 
     /**
@@ -34,6 +42,11 @@ class PPLXChatApp {
         
         // 초기 상태 설정
         this.setState('welcome');
+        
+        // 채팅 모드일 때 대화 이력 로드
+        if (this.currentState === 'chat') {
+            this.loadConversationHistory();
+        }
         
         // 사용자 인사말 업데이트
         this.updateUserGreeting();
@@ -91,6 +104,9 @@ class PPLXChatApp {
         
         // Chat Interface 이벤트들
         this.bindChatEvents();
+        
+        // 검색 이력 관련 이벤트들
+        this.bindSearchHistoryEvents();
         
         // 모바일 사이드바 관련
         this.bindMobileSidebarEvents();
@@ -237,6 +253,432 @@ class PPLXChatApp {
             sidebarOverlay.addEventListener('click', () => {
                 this.closeChatSidebar();
             });
+        }
+    }
+
+    /**
+     * 검색 이력 관련 이벤트 바인딩
+     */
+    bindSearchHistoryEvents() {
+        // 검색창 이벤트
+        const historySearchInput = document.getElementById('historySearchInput');
+        const searchClearBtn = document.getElementById('searchClearBtn');
+        
+        if (historySearchInput) {
+            historySearchInput.addEventListener('input', (e) => {
+                const query = e.target.value.trim();
+                this.handleHistorySearch(query);
+                
+                // 검색어가 있으면 클리어 버튼 표시
+                if (searchClearBtn) {
+                    searchClearBtn.style.display = query ? 'block' : 'none';
+                }
+            });
+        }
+        
+        if (searchClearBtn) {
+            searchClearBtn.addEventListener('click', () => {
+                if (historySearchInput) {
+                    historySearchInput.value = '';
+                    historySearchInput.focus();
+                    searchClearBtn.style.display = 'none';
+                    this.handleHistorySearch('');
+                }
+            });
+        }
+        
+        // 새 대화 버튼
+        const newChatBtn = document.getElementById('newChatBtn');
+        if (newChatBtn) {
+            newChatBtn.addEventListener('click', () => {
+                this.createNewConversation();
+            });
+        }
+        
+        // 더 보기 버튼
+        const loadMoreBtn = document.getElementById('loadMoreBtn');
+        if (loadMoreBtn) {
+            loadMoreBtn.addEventListener('click', () => {
+                this.loadMoreConversations();
+            });
+        }
+        
+        // 키보드 단축키
+        document.addEventListener('keydown', (e) => {
+            // Ctrl+H로 이력 패널 토글
+            if (e.ctrlKey && e.key === 'h') {
+                e.preventDefault();
+                this.toggleSidebar();
+            }
+        });
+    }
+
+    /**
+     * 검색 이력 처리
+     */
+    async handleHistorySearch(query) {
+        // 이전 검색 타이머 취소
+        if (this.searchHistory.searchTimeout) {
+            clearTimeout(this.searchHistory.searchTimeout);
+        }
+        
+        this.searchHistory.searchQuery = query;
+        
+        // 검색어가 없으면 즉시 로드
+        if (!query) {
+            await this.loadConversationHistory();
+            return;
+        }
+        
+        // 300ms 지연 후 검색 실행
+        this.searchHistory.searchTimeout = setTimeout(async () => {
+            await this.loadConversationHistory(1, query);
+        }, 300);
+    }
+
+    /**
+     * 대화 이력 로드
+     */
+    async loadConversationHistory(page = 1, searchQuery = '') {
+        if (this.searchHistory.isLoading) return;
+        
+        this.searchHistory.isLoading = true;
+        this.showHistoryLoading(true);
+        
+        try {
+            const params = new URLSearchParams({
+                page: page.toString(),
+                per_page: '50'
+            });
+            
+            if (searchQuery) {
+                params.append('search', searchQuery);
+            }
+            
+            const response = await fetch(`/api/conversations/list?${params}`);
+            const data = await response.json();
+            
+            if (response.ok) {
+                this.searchHistory.conversations = data.conversations;
+                this.searchHistory.currentPage = data.pagination.page;
+                this.searchHistory.totalPages = data.pagination.pages;
+                
+                this.renderConversationHistory();
+            } else {
+                console.error('대화 이력 로드 실패:', data.error);
+                this.showHistoryEmpty();
+            }
+        } catch (error) {
+            console.error('대화 이력 로드 오류:', error);
+            this.showHistoryEmpty();
+        } finally {
+            this.searchHistory.isLoading = false;
+            this.showHistoryLoading(false);
+        }
+    }
+
+    /**
+     * 대화 이력 렌더링
+     */
+    renderConversationHistory() {
+        const historyEmpty = document.getElementById('historyEmpty');
+        const chatHistory = document.getElementById('chatHistory');
+        
+        if (!this.searchHistory.conversations || this.searchHistory.conversations.favorites.length === 0 && 
+            this.searchHistory.conversations.today.length === 0 && 
+            this.searchHistory.conversations.yesterday.length === 0 && 
+            this.searchHistory.conversations.this_week.length === 0 && 
+            this.searchHistory.conversations.older.length === 0) {
+            this.showHistoryEmpty();
+            return;
+        }
+        
+        if (historyEmpty) historyEmpty.style.display = 'none';
+        if (chatHistory) chatHistory.style.display = 'block';
+        
+        // 각 섹션 렌더링
+        this.renderHistorySection('favorites', this.searchHistory.conversations.favorites, 'favoritesSection', 'favoritesList', 'favoritesCount');
+        this.renderHistorySection('today', this.searchHistory.conversations.today, 'todaySection', 'todayList', 'todayCount');
+        this.renderHistorySection('yesterday', this.searchHistory.conversations.yesterday, 'yesterdaySection', 'yesterdayList', 'yesterdayCount');
+        this.renderHistorySection('this_week', this.searchHistory.conversations.this_week, 'thisWeekSection', 'thisWeekList', 'thisWeekCount');
+        this.renderHistorySection('older', this.searchHistory.conversations.older, 'olderSection', 'olderList', 'olderCount');
+        
+        // 더 보기 버튼 표시/숨김
+        const loadMoreSection = document.getElementById('loadMoreSection');
+        if (loadMoreSection) {
+            loadMoreSection.style.display = this.searchHistory.currentPage < this.searchHistory.totalPages ? 'block' : 'none';
+        }
+    }
+
+    /**
+     * 이력 섹션 렌더링
+     */
+    renderHistorySection(sectionKey, conversations, sectionId, listId, countId) {
+        const section = document.getElementById(sectionId);
+        const list = document.getElementById(listId);
+        const count = document.getElementById(countId);
+        
+        if (!section || !list || !count) return;
+        
+        if (conversations.length === 0) {
+            section.style.display = 'none';
+            return;
+        }
+        
+        section.style.display = 'block';
+        count.textContent = conversations.length;
+        
+        list.innerHTML = conversations.map(conv => this.createHistoryItemHTML(conv)).join('');
+        
+        // 이벤트 리스너 추가
+        list.querySelectorAll('.history-item').forEach(item => {
+            const conversationId = item.dataset.conversationId;
+            
+            item.addEventListener('click', (e) => {
+                if (!e.target.closest('.conversation-actions')) {
+                    this.loadConversation(conversationId);
+                }
+            });
+        });
+        
+        // 액션 버튼 이벤트
+        list.querySelectorAll('.conversation-action-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const action = btn.dataset.action;
+                const conversationId = btn.closest('.history-item').dataset.conversationId;
+                
+                if (action === 'favorite') {
+                    this.toggleConversationFavorite(conversationId);
+                } else if (action === 'delete') {
+                    this.deleteConversation(conversationId);
+                }
+            });
+        });
+    }
+
+    /**
+     * 이력 항목 HTML 생성
+     */
+    createHistoryItemHTML(conversation) {
+        const isActive = conversation.id === this.currentConversationId;
+        const timeAgo = this.getTimeAgo(new Date(conversation.updated_at));
+        
+        return `
+            <div class="history-item ${isActive ? 'active' : ''}" data-conversation-id="${conversation.id}">
+                <div class="conversation-content">
+                    <div class="conversation-title">${this.escapeHtml(conversation.title || '새 대화')}</div>
+                    <div class="conversation-preview">${conversation.message_count}개 메시지</div>
+                </div>
+                <div class="conversation-time">${timeAgo}</div>
+                <div class="conversation-actions">
+                    <button class="conversation-action-btn favorite ${conversation.is_favorite ? 'active' : ''}" 
+                            data-action="favorite" title="즐겨찾기">
+                        <i class="fas fa-star"></i>
+                    </button>
+                    <button class="conversation-action-btn" data-action="delete" title="삭제">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </div>
+            </div>
+        `;
+    }
+
+    /**
+     * 상대 시간 표시
+     */
+    getTimeAgo(date) {
+        const now = new Date();
+        const diffMs = now - date;
+        const diffMins = Math.floor(diffMs / (1000 * 60));
+        const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+        const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+        
+        if (diffMins < 1) return '방금 전';
+        if (diffMins < 60) return `${diffMins}분 전`;
+        if (diffHours < 24) return `${diffHours}시간 전`;
+        if (diffDays < 7) return `${diffDays}일 전`;
+        
+        return date.toLocaleDateString('ko-KR', { 
+            month: 'short', 
+            day: 'numeric' 
+        });
+    }
+
+    /**
+     * 로딩 상태 표시
+     */
+    showHistoryLoading(show) {
+        const historyLoading = document.getElementById('historyLoading');
+        const chatHistory = document.getElementById('chatHistory');
+        
+        if (historyLoading) {
+            historyLoading.style.display = show ? 'flex' : 'none';
+        }
+        if (chatHistory) {
+            chatHistory.style.display = show ? 'none' : 'block';
+        }
+    }
+
+    /**
+     * 빈 상태 표시
+     */
+    showHistoryEmpty() {
+        const historyEmpty = document.getElementById('historyEmpty');
+        const chatHistory = document.getElementById('chatHistory');
+        
+        if (historyEmpty) historyEmpty.style.display = 'flex';
+        if (chatHistory) chatHistory.style.display = 'none';
+    }
+
+    /**
+     * 새 대화 생성
+     */
+    async createNewConversation() {
+        try {
+            const response = await fetch('/api/conversations/new', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ title: '새 대화' })
+            });
+            
+            const data = await response.json();
+            
+            if (response.ok) {
+                this.currentConversationId = data.conversation.id;
+                this.setState('chat');
+                this.clearChatMessages();
+                await this.loadConversationHistory(); // 이력 새로고침
+            } else {
+                console.error('새 대화 생성 실패:', data.error);
+            }
+        } catch (error) {
+            console.error('새 대화 생성 오류:', error);
+        }
+    }
+
+    /**
+     * 대화 로드
+     */
+    async loadConversation(conversationId) {
+        try {
+            const response = await fetch(`/api/conversations/${conversationId}`);
+            const data = await response.json();
+            
+            if (response.ok) {
+                this.currentConversationId = conversationId;
+                this.setState('chat');
+                this.clearChatMessages();
+                
+                // 메시지 표시
+                if (data.messages && data.messages.length > 0) {
+                    data.messages.forEach(msg => {
+                        if (msg.message_type === 'user') {
+                            this.displayUserMessage(msg.content, false);
+                        } else {
+                            this.displayAssistantMessage(msg.content, msg.citations || [], false);
+                        }
+                    });
+                }
+                
+                await this.loadConversationHistory(); // 이력 새로고침
+            } else {
+                console.error('대화 로드 실패:', data.error);
+            }
+        } catch (error) {
+            console.error('대화 로드 오류:', error);
+        }
+    }
+
+    /**
+     * 즐겨찾기 토글
+     */
+    async toggleConversationFavorite(conversationId) {
+        try {
+            const response = await fetch(`/api/conversations/${conversationId}/favorite`, {
+                method: 'POST'
+            });
+            
+            const data = await response.json();
+            
+            if (response.ok) {
+                await this.loadConversationHistory(); // 이력 새로고침
+            } else {
+                console.error('즐겨찾기 토글 실패:', data.error);
+            }
+        } catch (error) {
+            console.error('즐겨찾기 토글 오류:', error);
+        }
+    }
+
+    /**
+     * 대화 삭제
+     */
+    async deleteConversation(conversationId) {
+        if (!confirm('이 대화를 삭제하시겠습니까?')) return;
+        
+        try {
+            const response = await fetch(`/api/conversations/${conversationId}`, {
+                method: 'DELETE'
+            });
+            
+            const data = await response.json();
+            
+            if (response.ok) {
+                if (conversationId === this.currentConversationId) {
+                    this.setState('welcome');
+                    this.currentConversationId = null;
+                }
+                await this.loadConversationHistory(); // 이력 새로고침
+            } else {
+                console.error('대화 삭제 실패:', data.error);
+            }
+        } catch (error) {
+            console.error('대화 삭제 오류:', error);
+        }
+    }
+
+    /**
+     * 더 많은 대화 로드
+     */
+    async loadMoreConversations() {
+        if (this.searchHistory.currentPage >= this.searchHistory.totalPages) return;
+        
+        await this.loadConversationHistory(
+            this.searchHistory.currentPage + 1, 
+            this.searchHistory.searchQuery
+        );
+    }
+
+    /**
+     * 채팅 메시지 초기화
+     */
+    clearChatMessages() {
+        const chatMessages = document.getElementById('chatMessages');
+        if (chatMessages) {
+            chatMessages.innerHTML = '';
+        }
+    }
+
+    /**
+     * 사이드바 토글 (모바일용)
+     */
+    toggleSidebar() {
+        const sidebar = document.getElementById('chatSidebar');
+        const overlay = document.getElementById('sidebarOverlay');
+        
+        if (sidebar && overlay) {
+            const isOpen = sidebar.classList.contains('mobile-open');
+            
+            if (isOpen) {
+                sidebar.classList.remove('mobile-open');
+                overlay.classList.remove('active');
+            } else {
+                sidebar.classList.add('mobile-open');
+                overlay.classList.add('active');
+            }
         }
     }
 

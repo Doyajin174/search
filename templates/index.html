@@ -119,28 +119,102 @@
                         <i class="fas fa-plus"></i>
                         <span>새 대화</span>
                     </button>
+                    
+                    <!-- 검색창 -->
+                    <div class="history-search">
+                        <div class="search-input-wrapper">
+                            <i class="fas fa-search search-icon"></i>
+                            <input type="text" id="historySearchInput" placeholder="대화 검색..." maxlength="100">
+                            <button class="search-clear-btn" id="searchClearBtn" style="display: none;">
+                                <i class="fas fa-times"></i>
+                            </button>
+                        </div>
+                    </div>
                 </div>
                 
-                <div class="chat-history">
-                    <div class="history-section">
-                        <h3 class="history-title">오늘</h3>
-                        <div class="history-list" id="todayHistory">
-                            <!-- 오늘의 대화 기록 -->
+                <!-- 로딩 인디케이터 -->
+                <div class="history-loading" id="historyLoading" style="display: none;">
+                    <div class="loading-spinner"></div>
+                    <span>대화 목록 로딩 중...</span>
+                </div>
+                
+                <!-- 빈 상태 -->
+                <div class="history-empty" id="historyEmpty" style="display: none;">
+                    <div class="empty-icon">
+                        <i class="fas fa-comments"></i>
+                    </div>
+                    <div class="empty-text">아직 대화가 없습니다</div>
+                    <div class="empty-subtitle">새 대화를 시작해보세요</div>
+                </div>
+                
+                <!-- 대화 이력 -->
+                <div class="chat-history" id="chatHistory">
+                    <!-- 즐겨찾기 -->
+                    <div class="history-section" id="favoritesSection" style="display: none;">
+                        <div class="history-section-header">
+                            <i class="fas fa-star section-icon"></i>
+                            <h3 class="history-title">즐겨찾기</h3>
+                            <span class="section-count" id="favoritesCount">0</span>
+                        </div>
+                        <div class="history-list" id="favoritesList">
+                            <!-- 즐겨찾기 대화들 -->
                         </div>
                     </div>
                     
-                    <div class="history-section">
-                        <h3 class="history-title">어제</h3>
-                        <div class="history-list" id="yesterdayHistory">
-                            <!-- 어제의 대화 기록 -->
+                    <!-- 오늘 -->
+                    <div class="history-section" id="todaySection" style="display: none;">
+                        <div class="history-section-header">
+                            <i class="fas fa-calendar-day section-icon"></i>
+                            <h3 class="history-title">오늘</h3>
+                            <span class="section-count" id="todayCount">0</span>
+                        </div>
+                        <div class="history-list" id="todayList">
+                            <!-- 오늘의 대화들 -->
                         </div>
                     </div>
                     
-                    <div class="history-section">
-                        <h3 class="history-title">지난 7일</h3>
-                        <div class="history-list" id="weekHistory">
-                            <!-- 지난 주의 대화 기록 -->
+                    <!-- 어제 -->
+                    <div class="history-section" id="yesterdaySection" style="display: none;">
+                        <div class="history-section-header">
+                            <i class="fas fa-calendar-minus section-icon"></i>
+                            <h3 class="history-title">어제</h3>
+                            <span class="section-count" id="yesterdayCount">0</span>
                         </div>
+                        <div class="history-list" id="yesterdayList">
+                            <!-- 어제의 대화들 -->
+                        </div>
+                    </div>
+                    
+                    <!-- 이번 주 -->
+                    <div class="history-section" id="thisWeekSection" style="display: none;">
+                        <div class="history-section-header">
+                            <i class="fas fa-calendar-week section-icon"></i>
+                            <h3 class="history-title">이번 주</h3>
+                            <span class="section-count" id="thisWeekCount">0</span>
+                        </div>
+                        <div class="history-list" id="thisWeekList">
+                            <!-- 이번 주의 대화들 -->
+                        </div>
+                    </div>
+                    
+                    <!-- 이전 -->
+                    <div class="history-section" id="olderSection" style="display: none;">
+                        <div class="history-section-header">
+                            <i class="fas fa-calendar-alt section-icon"></i>
+                            <h3 class="history-title">이전</h3>
+                            <span class="section-count" id="olderCount">0</span>
+                        </div>
+                        <div class="history-list" id="olderList">
+                            <!-- 이전 대화들 -->
+                        </div>
+                    </div>
+                    
+                    <!-- 더 보기 -->
+                    <div class="load-more-section" id="loadMoreSection" style="display: none;">
+                        <button class="load-more-btn" id="loadMoreBtn">
+                            <i class="fas fa-chevron-down"></i>
+                            더 보기
+                        </button>
                     </div>
                 </div>
                 

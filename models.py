@@ -43,6 +43,7 @@ class Conversation(db.Model):
     created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
     is_active = db.Column(db.Boolean, nullable=False, default=True)
+    is_favorite = db.Column(db.Boolean, nullable=False, default=False)
     
     # 관계 설정
     messages = db.relationship('Message', backref='conversation', lazy=True, cascade='all, delete-orphan', order_by='Message.created_at')
@@ -55,6 +56,7 @@ class Conversation(db.Model):
             'created_at': self.created_at.isoformat(),
             'updated_at': self.updated_at.isoformat(),
             'is_active': self.is_active,
+            'is_favorite': self.is_favorite,
             'message_count': len(self.messages)
         }
 
