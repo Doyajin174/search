@@ -797,14 +797,17 @@ class PPLXChatApp {
         const message = input.value.trim();
         if (!message) return;
         
+        // Welcome 입력창 초기화
+        input.value = '';
+        
+        // 새 대화 시작
+        await this.startNewConversation();
+        
         // Chat 모드로 전환
         this.setState('chat');
         
         // 메시지 전송
         await this.sendMessage(message);
-        
-        // Welcome 입력창 초기화
-        input.value = '';
     }
 
     /**
