@@ -733,22 +733,20 @@ class PPLXChatApp {
     }
 
     /**
-     * 상태 전환 (Welcome <-> Chat)
+     * 상태 전환 (Welcome <-> Chat) - ChatGPT 스타일
      */
     setState(newState) {
         if (this.currentState === newState) return;
         
-        const welcomeScreen = document.getElementById('welcomeScreen');
-        const chatInterface = document.getElementById('chatInterface');
-        const mobileMenuBtn = document.getElementById('mobileMenuBtn');
+        const welcomeView = document.getElementById('welcomeView');
+        const chatView = document.getElementById('chatView');
         
         this.currentState = newState;
         
         if (newState === 'welcome') {
-            // Welcome Screen 표시
-            if (welcomeScreen) welcomeScreen.style.display = 'flex';
-            if (chatInterface) chatInterface.style.display = 'none';
-            if (mobileMenuBtn) mobileMenuBtn.style.display = 'none';
+            // Welcome View 표시
+            if (welcomeView) welcomeView.style.display = 'flex';
+            if (chatView) chatView.style.display = 'none';
             
             // Welcome 입력창에 포커스
             setTimeout(() => {
@@ -757,10 +755,9 @@ class PPLXChatApp {
             }, 100);
             
         } else if (newState === 'chat') {
-            // Chat Interface 표시
-            if (welcomeScreen) welcomeScreen.style.display = 'none';
-            if (chatInterface) chatInterface.style.display = 'flex';
-            if (mobileMenuBtn) mobileMenuBtn.style.display = 'block';
+            // Chat View 표시
+            if (welcomeView) welcomeView.style.display = 'none';
+            if (chatView) chatView.style.display = 'flex';
             
             // Chat 입력창에 포커스
             setTimeout(() => {
@@ -774,10 +771,10 @@ class PPLXChatApp {
     }
 
     /**
-     * 상태 전환 애니메이션
+     * 상태 전환 애니메이션 - ChatGPT 스타일
      */
     animateStateTransition(newState) {
-        const container = document.querySelector('.app-container');
+        const container = document.querySelector('.chatgpt-container');
         if (!container) return;
         
         container.style.opacity = '0.95';
