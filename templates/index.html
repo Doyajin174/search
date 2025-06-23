@@ -34,84 +34,9 @@
         </div>
     </header>
 
-    <!-- 메인 앱 컨테이너 -->
+    <!-- 메인 앱 컨테이너 (ChatGPT 스타일) -->
     <div class="app-container">
-        <!-- Welcome Screen -->
-        <div class="welcome-screen" id="welcomeScreen">
-            <div class="welcome-content">
-                <!-- 로고 섹션 -->
-                <div class="welcome-logo">
-                    <div class="gradient-logo">
-                        <i class="fas fa-search"></i>
-                    </div>
-                    <h1 class="welcome-title">PPLX AI Search</h1>
-                    <p class="welcome-subtitle">AI와 실시간 검색으로 정확한 답변을 찾아보세요</p>
-                </div>
-
-                <!-- 메인 검색 섹션 -->
-                <div class="main-search-section">
-                    <!-- 모델 선택 -->
-                    <div class="model-selector-wrapper">
-                        <div class="model-selector">
-                            <i class="fas fa-robot model-icon"></i>
-                            <select id="welcomeModelSelect" class="model-select">
-                                <option value="sonar-pro">Sonar Pro - 최고 성능</option>
-                                <option value="sonar">Sonar - 균형잡힌 성능</option>
-                                <option value="sonar-deep-research">Deep Research - 심층 분석</option>
-                                <option value="codellama">CodeLlama - 코딩 전문</option>
-                            </select>
-                        </div>
-                    </div>
-
-                    <!-- 메인 검색창 -->
-                    <div class="main-search-container">
-                        <div class="search-input-wrapper">
-                            <textarea 
-                                id="welcomeMessageInput"
-                                placeholder="무엇이든 물어보세요..."
-                                rows="1"
-                                maxlength="4000"
-                            ></textarea>
-                            <button class="search-submit-btn" id="welcomeSubmitBtn" disabled>
-                                <i class="fas fa-arrow-right"></i>
-                            </button>
-                        </div>
-                        
-                        <!-- 검색 옵션 -->
-                        <div class="search-options">
-                            <div class="search-mode-selector">
-                                <label class="search-mode-option">
-                                    <input type="radio" name="searchMode" value="web" checked>
-                                    <span class="option-label">
-                                        <i class="fas fa-globe"></i>
-                                        웹 검색
-                                    </span>
-                                </label>
-                                <label class="search-mode-option">
-                                    <input type="radio" name="searchMode" value="academic">
-                                    <span class="option-label">
-                                        <i class="fas fa-graduation-cap"></i>
-                                        학술 검색
-                                    </span>
-                                </label>
-                                <label class="search-mode-option">
-                                    <input type="radio" name="searchMode" value="general">
-                                    <span class="option-label">
-                                        <i class="fas fa-comment"></i>
-                                        일반 대화
-                                    </span>
-                                </label>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-
-            </div>
-        </div>
-
-        <!-- Chat Interface -->
-        <div class="chat-interface" id="chatInterface" style="display: none;">
+        <!-- 좌측 사이드바 (항상 표시) -->
             <!-- 사이드바 -->
             <aside class="chat-sidebar" id="chatSidebar">
                 <div class="sidebar-header">
