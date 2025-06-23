@@ -1189,7 +1189,11 @@ class PPLXChatApp {
     scrollToBottom() {
         const chatMessages = document.getElementById('chatMessages');
         if (chatMessages) {
-            chatMessages.scrollTop = chatMessages.scrollHeight;
+            // 부드러운 스크롤 효과
+            chatMessages.scrollTo({
+                top: chatMessages.scrollHeight,
+                behavior: 'smooth'
+            });
         }
     }
 

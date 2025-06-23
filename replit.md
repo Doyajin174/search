@@ -139,6 +139,7 @@ Changelog:
 - June 23, 2025. Implemented ChatGPT-style complete sidebar layout with persistent conversation history
 - June 23, 2025. Added automatic new conversation creation from welcome screen
 - June 23, 2025. Implemented comprehensive PPLX API response quality improvement system with automatic retry, quality scoring, and monitoring
+- June 23, 2025. Fixed chat scroll issues by implementing ChatGPT-style fixed-height chat container with internal scrolling
 ```
 
 ## User Preferences
