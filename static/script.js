@@ -43,10 +43,8 @@ class PPLXChatApp {
         // 초기 상태 설정
         this.setState('welcome');
         
-        // 채팅 모드일 때 대화 이력 로드
-        if (this.currentState === 'chat') {
-            this.loadConversationHistory();
-        }
+        // 대화 이력 초기 로드
+        this.loadConversationHistory();
         
         // 사용자 인사말 업데이트
         this.updateUserGreeting();
@@ -257,36 +255,9 @@ class PPLXChatApp {
     }
 
     /**
-     * 검색 이력 관련 이벤트 바인딩
+     * 검색 이력 관련 이벤트 바인딩 (ChatGPT 스타일)
      */
     bindSearchHistoryEvents() {
-        // 검색창 이벤트
-        const historySearchInput = document.getElementById('historySearchInput');
-        const searchClearBtn = document.getElementById('searchClearBtn');
-        
-        if (historySearchInput) {
-            historySearchInput.addEventListener('input', (e) => {
-                const query = e.target.value.trim();
-                this.handleHistorySearch(query);
-                
-                // 검색어가 있으면 클리어 버튼 표시
-                if (searchClearBtn) {
-                    searchClearBtn.style.display = query ? 'block' : 'none';
-                }
-            });
-        }
-        
-        if (searchClearBtn) {
-            searchClearBtn.addEventListener('click', () => {
-                if (historySearchInput) {
-                    historySearchInput.value = '';
-                    historySearchInput.focus();
-                    searchClearBtn.style.display = 'none';
-                    this.handleHistorySearch('');
-                }
-            });
-        }
-        
         // 새 대화 버튼
         const newChatBtn = document.getElementById('newChatBtn');
         if (newChatBtn) {
@@ -295,20 +266,37 @@ class PPLXChatApp {
             });
         }
         
-        // 더 보기 버튼
-        const loadMoreBtn = document.getElementById('loadMoreBtn');
-        if (loadMoreBtn) {
-            loadMoreBtn.addEventListener('click', () => {
-                this.loadMoreConversations();
+        // 업그레이드 버튼
+        const upgradeBtn = document.getElementById('upgradeBtn');
+        if (upgradeBtn) {
+            upgradeBtn.addEventListener('click', () => {
+                alert('업그레이드 기능은 준비 중입니다.');
+            });
+        }
+        
+        // 설정 버튼
+        const settingsBtn = document.getElementById('settingsBtn');
+        if (settingsBtn) {
+            settingsBtn.addEventListener('click', () => {
+                // 기존 설정 모달 열기
+                this.openSettingsModal();
+            });
+        }
+        
+        // 프로필 버튼
+        const profileBtn = document.getElementById('profileBtn');
+        if (profileBtn) {
+            profileBtn.addEventListener('click', () => {
+                alert('프로필 설정은 준비 중입니다.');
             });
         }
         
         // 키보드 단축키
         document.addEventListener('keydown', (e) => {
-            // Ctrl+H로 이력 패널 토글
-            if (e.ctrlKey && e.key === 'h') {
+            // Ctrl+Shift+O로 새 대화
+            if (e.ctrlKey && e.shiftKey && e.key === 'O') {
                 e.preventDefault();
-                this.toggleSidebar();
+                this.createNewConversation();
             }
         });
     }
@@ -337,33 +325,21 @@ class PPLXChatApp {
     }
 
     /**
-     * 대화 이력 로드
+     * 대화 이력 로드 (ChatGPT 스타일)
      */
-    async loadConversationHistory(page = 1, searchQuery = '') {
+    async loadConversationHistory() {
         if (this.searchHistory.isLoading) return;
         
         this.searchHistory.isLoading = true;
         this.showHistoryLoading(true);
         
         try {
-            const params = new URLSearchParams({
-                page: page.toString(),
-                per_page: '50'
-            });
-            
-            if (searchQuery) {
-                params.append('search', searchQuery);
-            }
-            
-            const response = await fetch(`/api/conversations/list?${params}`);
+            const response = await fetch('/api/conversations/list?per_page=50');
             const data = await response.json();
             
             if (response.ok) {
-                this.searchHistory.conversations = data.conversations;
-                this.searchHistory.currentPage = data.pagination.page;
-                this.searchHistory.totalPages = data.pagination.pages;
-                
-                this.renderConversationHistory();
+                this.searchHistory.conversations = data.conversations || [];
+                this.renderConversationList();
             } else {
                 console.error('대화 이력 로드 실패:', data.error);
                 this.showHistoryEmpty();
@@ -378,36 +354,69 @@ class PPLXChatApp {
     }
 
     /**
-     * 대화 이력 렌더링
+     * 대화 목록 렌더링 (ChatGPT 스타일)
      */
-    renderConversationHistory() {
+    renderConversationList() {
+        const conversationList = document.getElementById('conversationList');
         const historyEmpty = document.getElementById('historyEmpty');
-        const chatHistory = document.getElementById('chatHistory');
         
-        if (!this.searchHistory.conversations || this.searchHistory.conversations.favorites.length === 0 && 
-            this.searchHistory.conversations.today.length === 0 && 
-            this.searchHistory.conversations.yesterday.length === 0 && 
-            this.searchHistory.conversations.this_week.length === 0 && 
-            this.searchHistory.conversations.older.length === 0) {
+        if (!conversationList) return;
+        
+        // 모든 대화를 하나의 리스트로 합치기
+        const allConversations = [];
+        if (this.searchHistory.conversations) {
+            if (this.searchHistory.conversations.favorites) {
+                allConversations.push(...this.searchHistory.conversations.favorites);
+            }
+            if (this.searchHistory.conversations.today) {
+                allConversations.push(...this.searchHistory.conversations.today);
+            }
+            if (this.searchHistory.conversations.yesterday) {
+                allConversations.push(...this.searchHistory.conversations.yesterday);
+            }
+            if (this.searchHistory.conversations.this_week) {
+                allConversations.push(...this.searchHistory.conversations.this_week);
+            }
+            if (this.searchHistory.conversations.older) {
+                allConversations.push(...this.searchHistory.conversations.older);
+            }
+        }
+        
+        if (allConversations.length === 0) {
             this.showHistoryEmpty();
             return;
         }
         
         if (historyEmpty) historyEmpty.style.display = 'none';
-        if (chatHistory) chatHistory.style.display = 'block';
         
-        // 각 섹션 렌더링
-        this.renderHistorySection('favorites', this.searchHistory.conversations.favorites, 'favoritesSection', 'favoritesList', 'favoritesCount');
-        this.renderHistorySection('today', this.searchHistory.conversations.today, 'todaySection', 'todayList', 'todayCount');
-        this.renderHistorySection('yesterday', this.searchHistory.conversations.yesterday, 'yesterdaySection', 'yesterdayList', 'yesterdayCount');
-        this.renderHistorySection('this_week', this.searchHistory.conversations.this_week, 'thisWeekSection', 'thisWeekList', 'thisWeekCount');
-        this.renderHistorySection('older', this.searchHistory.conversations.older, 'olderSection', 'olderList', 'olderCount');
+        // 최신순으로 정렬
+        allConversations.sort((a, b) => new Date(b.updated_at) - new Date(a.updated_at));
         
-        // 더 보기 버튼 표시/숨김
-        const loadMoreSection = document.getElementById('loadMoreSection');
-        if (loadMoreSection) {
-            loadMoreSection.style.display = this.searchHistory.currentPage < this.searchHistory.totalPages ? 'block' : 'none';
-        }
+        conversationList.innerHTML = allConversations.map(conv => this.createConversationItemHTML(conv)).join('');
+        
+        // 이벤트 리스너 추가
+        conversationList.querySelectorAll('.conversation-item').forEach(item => {
+            const conversationId = item.dataset.conversationId;
+            
+            item.addEventListener('click', (e) => {
+                if (!e.target.closest('.conversation-actions')) {
+                    this.loadConversation(conversationId);
+                }
+            });
+        });
+        
+        // 액션 버튼 이벤트
+        conversationList.querySelectorAll('.conversation-action-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const action = btn.dataset.action;
+                const conversationId = btn.closest('.conversation-item').dataset.conversationId;
+                
+                if (action === 'delete') {
+                    this.deleteConversation(conversationId);
+                }
+            });
+        });
     }
 
     /**
@@ -458,24 +467,18 @@ class PPLXChatApp {
     }
 
     /**
-     * 이력 항목 HTML 생성
+     * 대화 항목 HTML 생성 (ChatGPT 스타일)
      */
-    createHistoryItemHTML(conversation) {
+    createConversationItemHTML(conversation) {
         const isActive = conversation.id === this.currentConversationId;
-        const timeAgo = this.getTimeAgo(new Date(conversation.updated_at));
         
         return `
-            <div class="history-item ${isActive ? 'active' : ''}" data-conversation-id="${conversation.id}">
-                <div class="conversation-content">
-                    <div class="conversation-title">${this.escapeHtml(conversation.title || '새 대화')}</div>
-                    <div class="conversation-preview">${conversation.message_count}개 메시지</div>
+            <div class="conversation-item ${isActive ? 'active' : ''}" data-conversation-id="${conversation.id}">
+                <div class="conversation-icon">
+                    <i class="fas fa-message"></i>
                 </div>
-                <div class="conversation-time">${timeAgo}</div>
+                <div class="conversation-title">${this.escapeHtml(conversation.title || '새 대화')}</div>
                 <div class="conversation-actions">
-                    <button class="conversation-action-btn favorite ${conversation.is_favorite ? 'active' : ''}" 
-                            data-action="favorite" title="즐겨찾기">
-                        <i class="fas fa-star"></i>
-                    </button>
                     <button class="conversation-action-btn" data-action="delete" title="삭제">
                         <i class="fas fa-trash"></i>
                     </button>
@@ -506,29 +509,29 @@ class PPLXChatApp {
     }
 
     /**
-     * 로딩 상태 표시
+     * 로딩 상태 표시 (ChatGPT 스타일)
      */
     showHistoryLoading(show) {
         const historyLoading = document.getElementById('historyLoading');
-        const chatHistory = document.getElementById('chatHistory');
+        const conversationList = document.getElementById('conversationList');
         
         if (historyLoading) {
             historyLoading.style.display = show ? 'flex' : 'none';
         }
-        if (chatHistory) {
-            chatHistory.style.display = show ? 'none' : 'block';
+        if (conversationList) {
+            conversationList.style.display = show ? 'none' : 'block';
         }
     }
 
     /**
-     * 빈 상태 표시
+     * 빈 상태 표시 (ChatGPT 스타일)
      */
     showHistoryEmpty() {
         const historyEmpty = document.getElementById('historyEmpty');
-        const chatHistory = document.getElementById('chatHistory');
+        const conversationList = document.getElementById('conversationList');
         
         if (historyEmpty) historyEmpty.style.display = 'flex';
-        if (chatHistory) chatHistory.style.display = 'none';
+        if (conversationList) conversationList.style.display = 'none';
     }
 
     /**

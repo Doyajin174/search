@@ -34,30 +34,21 @@
         </div>
     </header>
 
-    <!-- 메인 앱 컨테이너 (ChatGPT 스타일) -->
-    <div class="app-container">
+    <!-- ChatGPT 스타일 메인 컨테이너 -->
+    <div class="chatgpt-container">
         <!-- 좌측 사이드바 (항상 표시) -->
-            <!-- 사이드바 -->
-            <aside class="chat-sidebar" id="chatSidebar">
-                <div class="sidebar-header">
-                    <button class="new-chat-btn" id="newChatBtn">
-                        <i class="fas fa-plus"></i>
-                        <span>새 대화</span>
-                    </button>
-                    
-                    <!-- 검색창 -->
-                    <div class="history-search">
-                        <div class="search-input-wrapper">
-                            <i class="fas fa-search search-icon"></i>
-                            <input type="text" id="historySearchInput" placeholder="대화 검색..." maxlength="100">
-                            <button class="search-clear-btn" id="searchClearBtn" style="display: none;">
-                                <i class="fas fa-times"></i>
-                            </button>
-                        </div>
-                    </div>
-                </div>
-                
-                <!-- 로딩 인디케이터 -->
+        <aside class="chatgpt-sidebar" id="chatgptSidebar">
+            <!-- 상단: 새 채팅 버튼 -->
+            <div class="sidebar-header">
+                <button class="new-chat-btn" id="newChatBtn">
+                    <i class="fas fa-plus"></i>
+                    <span>새 채팅</span>
+                </button>
+            </div>
+            
+            <!-- 중간: 대화 이력 (스크롤 영역) -->
+            <div class="conversation-history" id="conversationHistory">
+                <!-- 로딩 상태 -->
                 <div class="history-loading" id="historyLoading" style="display: none;">
                     <div class="loading-spinner"></div>
                     <span>대화 목록 로딩 중...</span>
@@ -65,104 +56,119 @@
                 
                 <!-- 빈 상태 -->
                 <div class="history-empty" id="historyEmpty" style="display: none;">
-                    <div class="empty-icon">
-                        <i class="fas fa-comments"></i>
-                    </div>
                     <div class="empty-text">아직 대화가 없습니다</div>
-                    <div class="empty-subtitle">새 대화를 시작해보세요</div>
                 </div>
                 
-                <!-- 대화 이력 -->
-                <div class="chat-history" id="chatHistory">
-                    <!-- 즐겨찾기 -->
-                    <div class="history-section" id="favoritesSection" style="display: none;">
-                        <div class="history-section-header">
-                            <i class="fas fa-star section-icon"></i>
-                            <h3 class="history-title">즐겨찾기</h3>
-                            <span class="section-count" id="favoritesCount">0</span>
-                        </div>
-                        <div class="history-list" id="favoritesList">
-                            <!-- 즐겨찾기 대화들 -->
-                        </div>
-                    </div>
-                    
-                    <!-- 오늘 -->
-                    <div class="history-section" id="todaySection" style="display: none;">
-                        <div class="history-section-header">
-                            <i class="fas fa-calendar-day section-icon"></i>
-                            <h3 class="history-title">오늘</h3>
-                            <span class="section-count" id="todayCount">0</span>
-                        </div>
-                        <div class="history-list" id="todayList">
-                            <!-- 오늘의 대화들 -->
-                        </div>
-                    </div>
-                    
-                    <!-- 어제 -->
-                    <div class="history-section" id="yesterdaySection" style="display: none;">
-                        <div class="history-section-header">
-                            <i class="fas fa-calendar-minus section-icon"></i>
-                            <h3 class="history-title">어제</h3>
-                            <span class="section-count" id="yesterdayCount">0</span>
-                        </div>
-                        <div class="history-list" id="yesterdayList">
-                            <!-- 어제의 대화들 -->
-                        </div>
-                    </div>
-                    
-                    <!-- 이번 주 -->
-                    <div class="history-section" id="thisWeekSection" style="display: none;">
-                        <div class="history-section-header">
-                            <i class="fas fa-calendar-week section-icon"></i>
-                            <h3 class="history-title">이번 주</h3>
-                            <span class="section-count" id="thisWeekCount">0</span>
-                        </div>
-                        <div class="history-list" id="thisWeekList">
-                            <!-- 이번 주의 대화들 -->
-                        </div>
-                    </div>
-                    
-                    <!-- 이전 -->
-                    <div class="history-section" id="olderSection" style="display: none;">
-                        <div class="history-section-header">
-                            <i class="fas fa-calendar-alt section-icon"></i>
-                            <h3 class="history-title">이전</h3>
-                            <span class="section-count" id="olderCount">0</span>
-                        </div>
-                        <div class="history-list" id="olderList">
-                            <!-- 이전 대화들 -->
-                        </div>
-                    </div>
-                    
-                    <!-- 더 보기 -->
-                    <div class="load-more-section" id="loadMoreSection" style="display: none;">
-                        <button class="load-more-btn" id="loadMoreBtn">
-                            <i class="fas fa-chevron-down"></i>
-                            더 보기
-                        </button>
-                    </div>
+                <!-- 대화 목록 -->
+                <div class="conversation-list" id="conversationList">
+                    <!-- 대화 항목들이 여기에 동적으로 추가됩니다 -->
                 </div>
-                
-                <div class="sidebar-footer">
-                    <div class="user-info">
-                        <div class="user-avatar">
-                            <i class="fas fa-user"></i>
-                        </div>
-                        <div class="user-details">
-                            <div class="user-name" id="chatUserName">사용자</div>
-                            <div class="user-status">온라인</div>
-                        </div>
-                    </div>
-                    
-                    <button class="settings-btn" id="chatSettingsBtn" title="설정">
-                        <i class="fas fa-cog"></i>
+            </div>
+            
+            <!-- 하단: 설정 및 프로필 -->
+            <div class="sidebar-footer">
+                <div class="footer-section">
+                    <button class="footer-btn upgrade-btn" id="upgradeBtn">
+                        <i class="fas fa-crown"></i>
+                        <span>업그레이드</span>
                     </button>
                 </div>
-            </aside>
+                
+                <div class="footer-section">
+                    <button class="footer-btn settings-btn" id="settingsBtn">
+                        <i class="fas fa-cog"></i>
+                        <span>설정</span>
+                    </button>
+                </div>
+                
+                <div class="footer-section">
+                    <button class="footer-btn profile-btn" id="profileBtn">
+                        <div class="profile-avatar">
+                            <i class="fas fa-user"></i>
+                        </div>
+                        <span class="profile-name" id="profileName">사용자</span>
+                    </button>
+                </div>
+            </div>
+        </aside>
 
-            <!-- 메인 채팅 영역 -->
-            <main class="chat-main">
-                <!-- 채팅 메시지 -->
+        <!-- 우측 메인 컨텐츠 영역 -->
+        <main class="main-content" id="mainContent">
+            <!-- Welcome 화면 -->
+            <div class="welcome-view" id="welcomeView">
+                <div class="welcome-container">
+                    <!-- 로고 섹션 -->
+                    <div class="welcome-header">
+                        <div class="welcome-logo">
+                            <i class="fas fa-search"></i>
+                        </div>
+                        <h1 class="welcome-title">PPLX AI Search</h1>
+                        <p class="welcome-subtitle">AI와 실시간 검색으로 정확한 답변을 찾아보세요</p>
+                    </div>
+
+                    <!-- 검색 섹션 -->
+                    <div class="welcome-search">
+                        <!-- 모델 선택 -->
+                        <div class="model-selector-container">
+                            <div class="model-selector">
+                                <i class="fas fa-robot model-icon"></i>
+                                <select id="welcomeModelSelect" class="model-select">
+                                    <option value="sonar-pro">Sonar Pro - 최고 성능</option>
+                                    <option value="sonar">Sonar - 균형잡힌 성능</option>
+                                    <option value="sonar-deep-research">Deep Research - 심층 분석</option>
+                                    <option value="codellama">CodeLlama - 코딩 전문</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <!-- 검색창 -->
+                        <div class="search-input-container">
+                            <div class="search-input-wrapper">
+                                <textarea 
+                                    id="welcomeMessageInput"
+                                    placeholder="무엇이든 물어보세요..."
+                                    rows="1"
+                                    maxlength="4000"
+                                ></textarea>
+                                <button class="search-submit-btn" id="welcomeSubmitBtn" disabled>
+                                    <i class="fas fa-arrow-right"></i>
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <!-- 검색 옵션 -->
+                        <div class="search-options">
+                            <div class="search-mode-selector">
+                                <label class="search-mode-option">
+                                    <input type="radio" name="searchMode" value="web" checked>
+                                    <span class="option-label">
+                                        <i class="fas fa-globe"></i>
+                                        웹 검색
+                                    </span>
+                                </label>
+                                <label class="search-mode-option">
+                                    <input type="radio" name="searchMode" value="academic">
+                                    <span class="option-label">
+                                        <i class="fas fa-graduation-cap"></i>
+                                        학술 검색
+                                    </span>
+                                </label>
+                                <label class="search-mode-option">
+                                    <input type="radio" name="searchMode" value="general">
+                                    <span class="option-label">
+                                        <i class="fas fa-comment"></i>
+                                        일반 대화
+                                    </span>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Chat 화면 -->
+            <div class="chat-view" id="chatView" style="display: none;">
+                <!-- 채팅 메시지 영역 -->
                 <div class="chat-messages" id="chatMessages">
                     <!-- 메시지들이 여기에 동적으로 추가됩니다 -->
                 </div>
@@ -217,8 +223,8 @@
                         </div>
                     </div>
                 </div>
-            </main>
-        </div>
+            </div>
+        </main>
     </div>
 
     <!-- 사이드바 오버레이 (모바일) -->
