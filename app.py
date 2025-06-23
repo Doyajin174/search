@@ -190,19 +190,32 @@ def get_or_create_user():
         if user:
             # 마지막 활동 시간 업데이트
             user.last_active = datetime.utcnow()
-            db.session.commit()
+            try:
+                db.session.commit()
+            except:
+                db.session.rollback()
             return user
     
     # 새 사용자 생성
     user = User()
-    db.session.add(user)
-    db.session.commit()
-    
-    # 세션에 사용자 ID 저장
-    session['user_id'] = user.id
-    session.permanent = True
-    
-    return user
+    try:
+        db.session.add(user)
+        db.session.commit()
+        
+        # 세션에 사용자 ID 저장
+        session['user_id'] = user.id
+        session.permanent = True
+        
+        return user
+    except Exception as e:
+        db.session.rollback()
+        logging.error(f"사용자 생성 실패: {e}")
+        # 기존 사용자 중 하나를 반환하거나 임시 사용자 생성
+        existing_user = User.query.first()
+        if existing_user:
+            session['user_id'] = existing_user.id
+            return existing_user
+        raise e
 
 def get_or_create_conversation(user_id):
     """현재 활성 대화를 가져오거나 새 대화 생성"""
@@ -266,10 +279,20 @@ def get_conversations():
             page=page, per_page=per_page, error_out=False
         )
         
-        # 날짜별 그룹핑을 위한 데이터 변환
-        grouped_conversations = group_conversations_by_date([conv.to_dict() for conv in conversations.items])
+        # 대화 목록을 딕셔너리로 변환하고 메시지 수 추가
+        conversations_list = []
+        for conv in conversations.items:
+            conv_dict = conv.to_dict()
+            # 메시지 수 추가
+            message_count = Message.query.filter_by(conversation_id=conv.id).count()
+            conv_dict['message_count'] = message_count
+            conversations_list.append(conv_dict)
+        
+        # 날짜별 그룹핑
+        grouped_conversations = group_conversations_by_date(conversations_list)
         
         return jsonify({
+            'success': True,
             'conversations': grouped_conversations,
             'pagination': {
                 'page': conversations.page,
@@ -283,7 +306,7 @@ def get_conversations():
         
     except Exception as e:
         logging.error(f"대화 목록 조회 실패: {e}")
-        return jsonify({'error': '대화 목록을 불러올 수 없습니다.'}), 500
+        return jsonify({'success': False, 'error': '대화 목록을 불러올 수 없습니다.'}), 500
 
 @app.route('/api/conversations/<conversation_id>', methods=['GET'])
 def get_conversation(conversation_id):

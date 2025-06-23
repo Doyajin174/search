@@ -334,11 +334,11 @@ class PPLXChatApp {
         this.showHistoryLoading(true);
         
         try {
-            const response = await fetch('/api/conversations/list?per_page=50');
+            const response = await fetch('/api/conversations?per_page=50');
             const data = await response.json();
             
-            if (response.ok) {
-                this.searchHistory.conversations = data.conversations || [];
+            if (response.ok && data.success) {
+                this.searchHistory.conversations = data.conversations || {};
                 this.renderConversationList();
             } else {
                 console.error('대화 이력 로드 실패:', data.error);
@@ -364,22 +364,17 @@ class PPLXChatApp {
         
         // 모든 대화를 하나의 리스트로 합치기
         const allConversations = [];
-        if (this.searchHistory.conversations) {
-            if (this.searchHistory.conversations.favorites) {
+        if (this.searchHistory.conversations && typeof this.searchHistory.conversations === 'object') {
+            // favorites가 있으면 먼저 추가
+            if (this.searchHistory.conversations.favorites && Array.isArray(this.searchHistory.conversations.favorites)) {
                 allConversations.push(...this.searchHistory.conversations.favorites);
             }
-            if (this.searchHistory.conversations.today) {
-                allConversations.push(...this.searchHistory.conversations.today);
-            }
-            if (this.searchHistory.conversations.yesterday) {
-                allConversations.push(...this.searchHistory.conversations.yesterday);
-            }
-            if (this.searchHistory.conversations.this_week) {
-                allConversations.push(...this.searchHistory.conversations.this_week);
-            }
-            if (this.searchHistory.conversations.older) {
-                allConversations.push(...this.searchHistory.conversations.older);
-            }
+            // 나머지 카테고리들 추가
+            ['today', 'yesterday', 'this_week', 'older'].forEach(category => {
+                if (this.searchHistory.conversations[category] && Array.isArray(this.searchHistory.conversations[category])) {
+                    allConversations.push(...this.searchHistory.conversations[category]);
+                }
+            });
         }
         
         if (allConversations.length === 0) {
@@ -388,6 +383,7 @@ class PPLXChatApp {
         }
         
         if (historyEmpty) historyEmpty.style.display = 'none';
+        if (conversationList) conversationList.style.display = 'block';
         
         // 최신순으로 정렬
         allConversations.sort((a, b) => new Date(b.updated_at) - new Date(a.updated_at));
