@@ -430,6 +430,33 @@
     height: calc(100vh - 120px);
     max-height: calc(100vh - 120px);
     scroll-behavior: smooth;
+    /* 스크롤바 오른쪽 끝 고정 */
+    padding-right: 1rem;
+}
+
+/* 채팅 메시지 영역 스크롤바 커스터마이징 */
+.chat-messages::-webkit-scrollbar {
+    width: 8px;
+}
+
+.chat-messages::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.chat-messages::-webkit-scrollbar-thumb {
+    background-color: #565869;
+    border-radius: 4px;
+    border: none;
+}
+
+.chat-messages::-webkit-scrollbar-thumb:hover {
+    background-color: #6b6d7a;
+}
+
+/* Firefox 스크롤바 스타일링 */
+.chat-messages {
+    scrollbar-width: thin;
+    scrollbar-color: #565869 transparent;
 }
 
 .chat-input-section {

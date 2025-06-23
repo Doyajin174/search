@@ -140,6 +140,7 @@ Changelog:
 - June 23, 2025. Added automatic new conversation creation from welcome screen
 - June 23, 2025. Implemented comprehensive PPLX API response quality improvement system with automatic retry, quality scoring, and monitoring
 - June 23, 2025. Fixed chat scroll issues by implementing ChatGPT-style fixed-height chat container with internal scrolling
+- June 23, 2025. Customized scrollbar styling with right-edge positioning and modern appearance
 ```
 
 ## User Preferences
