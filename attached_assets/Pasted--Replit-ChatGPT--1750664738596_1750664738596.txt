@@ -1,0 +1,130 @@
+## **복사용 프롬프트**
+
+아래 텍스트를 복사해서 Replit 개발 에이전트에게 전달하세요:
+
+```
+ChatGPT와 동일한 완전한 사이드바 구현 요청
+
+=== 현재 상황 ===
+- 현재 구현된 화면은 중앙 집중형 검색 화면만 있음
+- ChatGPT처럼 좌측에 완전한 사이드바가 필요함
+- 첫 번째 이미지(ChatGPT)와 동일한 레이아웃 구조로 변경 필요
+
+=== 목표: ChatGPT 스타일 완전 구현 ===
+
+**정확한 레이아웃 구조:**
+```
+┌─────────────┬─────────────────────────────────┐
+│   사이드바   │        메인 컨텐츠 영역          │
+│  (260px)   │                                │
+│            │                                │
+│ + 새 채팅   │    PPLX AI Search              │
+│            │                                │
+│ 📝 대화1    │    [검색창]                     │
+│ 📝 대화2    │    [모델 선택]                  │
+│ 📝 대화3    │    [옵션들]                    │
+│ ...        │                                │
+│            │                                │
+│ ⚙️ 설정     │                                │
+│ 👤 프로필   │                                │
+└─────────────┴─────────────────────────────────┘
+```
+
+=== 핵심 구현 요구사항 ===
+
+1. **완전한 좌측 사이드바 (ChatGPT 동일)**
+   - 고정 폭: 260px
+   - 다크 테마 배경색: #202123 또는 유사
+   - 항상 표시 (Welcome 화면, Chat 화면 모두)
+
+2. **사이드바 구성 요소**
+   ```
+   상단:
+   - "+ 새 채팅" 버튼 (둥근 모서리, 호버 효과)
+   
+   중간 (스크롤 영역):
+   - 대화 이력 목록
+   - 각 항목에 제목 + 호버 시 삭제 버튼
+   - 선택된 대화 하이라이트
+   
+   하단:
+   - "업그레이드" 또는 "Plus" 버튼
+   - 설정 아이콘
+   - 사용자 프로필/계정 정보
+   ```
+
+3. **메인 컨텐츠 영역**
+   - 사이드바 오른쪽 전체 영역 사용
+   - Welcome 모드: 중앙 정렬된 검색 인터페이스
+   - Chat 모드: 대화 메시지 영역
+
+=== CSS 구현 가이드 ===
+
+**기본 구조:**
+```
+.app-container {
+  display: flex;
+  height: 100vh;
+  background: #343541;
+}
+
+.sidebar {
+  width: 260px;
+  background: #202123;
+  display: flex;
+  flex-direction: column;
+  padding: 8px;
+}
+
+.sidebar-header {
+  padding: 8px;
+}
+
+.new-chat-btn {
+  width: 100%;
+  padding: 12px;
+  background: transparent;
+  border: 1px solid #565869;
+  border-radius: 6px;
+  color: white;
+  cursor: pointer;
+}
+
+.chat-history {
+  flex: 1;
+  overflow-y: auto;
+  padding: 8px 0;
+}
+
+.chat-item {
+  padding: 8px 12px;
+  border-radius: 6px;
+  color: #ececf1;
+  cursor: pointer;
+  margin: 2px 0;
+}
+
+.chat-item:hover {
+  background: #2a2b32;
+}
+
+.main-content {
+  flex: 1;
+  background: #343541;
+}
+```
+
+=== 중요 포인트 ===
+- 현재 중앙 집중형 화면을 우측 메인 영역으로 이동
+- 사이드바는 항상 고정으로 표시
+- ChatGPT와 동일한 다크 테마 색상 사용
+- 반응형은 나중에 고려하고 우선 데스크톱 완전 구현
+
+첫 번째 이미지의 ChatGPT 레이아웃과 정확히 동일하게 구현해주세요. 특히 사이드바가 항상 보이고, 메인 컨텐츠가 우측에 위치하도록 전체 구조를 재설계해주시기 바랍니다.
+```
+
+이 프롬프트는 첫 번째 이미지의 ChatGPT 인터페이스를 정확히 재현하도록 구체적인 지침을 제공합니다.
+
+[1] https://pplx-res.cloudinary.com/image/private/user_uploads/69518989/9d0b9221-6620-47ae-9c4d-bf6858c07588/seukeurinsyas-2025-06-23-ohu-4.39.43.jpg
+[2] https://pplx-res.cloudinary.com/image/private/user_uploads/69518989/b37c4983-7f0a-4c1c-8770-a9e2369d76d4/seukeurinsyas-2025-06-23-ohu-4.40.32.jpg
+[3] https://pplx-res.cloudinary.com/image/private/user_uploads/69518989/1b396a9d-e7d4-4aa2-b0d6-a4915b562ba3/seukeurinsyas-2025-06-23-ohu-4.40.24.jpg
