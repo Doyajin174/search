@@ -228,6 +228,8 @@
     display: flex;
     flex-direction: column;
     position: relative;
+    height: 100vh;
+    overflow: hidden;
 }
 
 /* Welcome 화면 */
@@ -425,15 +427,17 @@
 .chat-messages {
     flex: 1;
     overflow-y: auto;
-    padding: 2rem 2rem 2rem 2rem;
+    overflow-x: hidden;
+    padding: 2rem;
     max-width: 768px;
     margin: 0 auto;
     width: 100%;
-    height: calc(100vh - 120px);
-    max-height: calc(100vh - 120px);
+    height: calc(100vh - 160px);
+    max-height: calc(100vh - 160px);
     scroll-behavior: smooth;
-    /* 스크롤바가 컨테이너 경계에 정확히 위치하도록 */
-    box-sizing: content-box;
+    position: relative;
+    /* 스크롤 활성화를 위한 중요 설정 */
+    contain: content;
 }
 
 /* 채팅 메시지 영역 스크롤바 커스터마이징 */
@@ -467,12 +471,17 @@
 /* 스크롤바 영역을 위한 추가 스타일 */
 .chat-view {
     overflow: hidden;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
 }
 
+/* 메시지 영역이 스크롤 가능하도록 보장 */
 .chat-messages {
-    /* 스크롤바가 컨테이너 밖으로 나가지 않도록 */
+    flex: 1;
     overflow-x: hidden;
     overflow-y: auto;
+    min-height: 0; /* flexbox 스크롤을 위한 중요한 설정 */
 }
 
 .chat-input-section {
@@ -481,10 +490,9 @@
     max-width: 768px;
     margin: 0 auto;
     width: 100%;
-    position: sticky;
-    bottom: 0;
     background: #343541;
     z-index: 10;
+    flex-shrink: 0; /* 입력창이 줄어들지 않도록 */
 }
 
 .input-container {
