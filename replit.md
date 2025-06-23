@@ -30,6 +30,9 @@ This is a Flask-based web application that provides an AI-powered search interfa
 - **Multi-Model AI Support**: Users can select from multiple Perplexity AI models optimized for different tasks
 - **State-Based Navigation**: Seamless transitions between welcome and chat modes with proper state management
 - **External AI Service**: Integrated Perplexity AI instead of building custom AI models for faster time-to-market
+- **Comprehensive Search History System**: Perplexity Library-style conversation management with search, favorites, and date grouping
+- **Performance-Optimized**: Virtual scrolling, debounced search, and lazy loading for handling large conversation histories
+- **Mobile-First Design**: Responsive sidebar that transforms into overlay on mobile devices
 
 ## Key Components
 
